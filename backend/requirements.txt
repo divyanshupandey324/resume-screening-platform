@@ -6,3 +6,6 @@ google-generativeai
 reportlab
 python-multipart
 python-dotenv
+passlib
+bcrypt
+pdfplumber
