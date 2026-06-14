@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import API from "../services/api";
 
 import { Pie } from "react-chartjs-2";
 
@@ -37,8 +37,8 @@ export default function CandidatePieChart({ onDataLoad }) {
   });
 
   useEffect(() => {
-    axios
-      .get("http://127.0.0.1:8000/analytics")
+    API
+      .get("/analytics")
       .then((response) => {
         const shortlisted = response.data.shortlisted || 0;
         const rejected = response.data.rejected || 0;

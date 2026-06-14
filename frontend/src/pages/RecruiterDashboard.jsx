@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import API from "../services/api";
 
 import Sidebar from "../components/Sidebar";
 import DashboardCard from "../components/DashboardCard";
@@ -15,7 +15,7 @@ export default function RecruiterDashboard() {
     });
 
     useEffect(() => {
-        axios.get("http://127.0.0.1:8000/analytics")
+        API.get("/analytics")
         .then((analyticsRes) => {
             const data = analyticsRes.data;
             setStats({

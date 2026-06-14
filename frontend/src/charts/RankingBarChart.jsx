@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import API from "../services/api";
 
 import { Bar } from "react-chartjs-2";
 
@@ -58,8 +58,8 @@ export default function RankingBarChart({ onDataLoad }) {
     });
 
     useEffect(() => {
-        axios
-            .get("http://127.0.0.1:8000/candidate/rankings")
+        API
+            .get("/candidate/rankings")
             .then((response) => {
                 const candidates = response.data || [];
 
