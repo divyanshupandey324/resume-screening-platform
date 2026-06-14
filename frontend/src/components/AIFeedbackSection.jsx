@@ -6,9 +6,9 @@ export default function AIFeedbackSection({ feedback }) {
     const parseFeedback = (text) => {
         const lowerText = text.toLowerCase();
         
-        const strengthsRegex = /(strengths|key competencies|pros):?/i;
-        const weaknessesRegex = /(weaknesses|missing skills|areas for improvement|cons):?/i;
-        const suggestionsRegex = /(suggestions|recommendations|actionable suggestions|tips):?/i;
+        const strengthsRegex = /\b(strengths|key competencies|pros)\b:?/i;
+        const weaknessesRegex = /\b(weaknesses|missing skills|areas for improvement|cons)\b:?/i;
+        const suggestionsRegex = /\b(suggestions|recommendations|actionable suggestions|tips)\b:?/i;
         
         const strengthsMatch = text.match(strengthsRegex);
         const weaknessesMatch = text.match(weaknessesRegex);
