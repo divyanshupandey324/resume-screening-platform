@@ -1,4 +1,5 @@
 import os
+import asyncio
 from fastapi import APIRouter, UploadFile, File, Form
 from bson import ObjectId
 from database.mongodb import candidate_collection, job_collection
@@ -25,10 +26,10 @@ async def upload_resume(
         buffer.write(content)
 
     # 1. Extract Resume Text
-    resume_text = extract_resume_text(file_path)
+    resume_text = await asyncio.to_thread(extract_resume_text, file_path)
 
     # 2. Extract Candidate Details & AI Feedback using Gemini
-    extracted = extract_details_and_feedback(resume_text)
+    extracted = await extract_details_and_feedback(resume_text)
 
     # 3. Fetch Job to screen against for Skill Match
     required_skills = ["python", "sql", "machine learning", "fastapi", "docker", "aws"]
@@ -36,7 +37,7 @@ async def upload_resume(
 
     if job_id and job_id != "undefined" and job_id != "":
         try:
-            job = job_collection.find_one({"_id": ObjectId(job_id)})
+            job = await asyncio.to_thread(job_collection.find_one, {"_id": ObjectId(job_id)})
             if job:
                 required_skills = job.get("required_skills", required_skills)
                 target_job_title = job.get("title", target_job_title)
@@ -45,7 +46,7 @@ async def upload_resume(
     else:
         # Fallback to the latest job in database if any exists
         try:
-            latest_job = job_collection.find_one(sort=[("_id", -1)])
+            latest_job = await asyncio.to_thread(job_collection.find_one, sort=[("_id", -1)])
             if latest_job:
                 required_skills = latest_job.get("required_skills", required_skills)
                 target_job_title = latest_job.get("title", target_job_title)
@@ -99,7 +100,7 @@ async def upload_resume(
         "target_job_title": target_job_title
     }
 
-    inserted = candidate_collection.insert_one(candidate_doc)
+    inserted = await asyncio.to_thread(candidate_collection.insert_one, candidate_doc)
     candidate_doc["_id"] = str(inserted.inserted_id)
 
     return candidate_doc

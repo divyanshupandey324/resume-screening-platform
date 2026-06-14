@@ -2,7 +2,7 @@ import json
 import re
 from services.gemini_service import model
 
-def extract_details_and_feedback(resume_text: str) -> dict:
+async def extract_details_and_feedback(resume_text: str) -> dict:
     prompt = f"""
     You are an expert AI recruiter. Analyze the following resume text and extract candidate details as a structured JSON object.
     
@@ -30,7 +30,10 @@ def extract_details_and_feedback(resume_text: str) -> dict:
     """
 
     try:
-        response = model.generate_content(prompt)
+        response = await model.generate_content_async(
+            prompt,
+            generation_config={"response_mime_type": "application/json"}
+        )
         text = response.text.strip()
         
         # Clean any markdown wrapping

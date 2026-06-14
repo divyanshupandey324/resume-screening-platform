@@ -24,6 +24,13 @@ except Exception as e:
 
 db = client["ai_recruitment_db"]
 
+# Ensure unique index on username to make query lookup O(1) and speed up authentication routes
+try:
+    db["users"].create_index("username", unique=True)
+    print("Database index for 'username' created successfully")
+except Exception as e:
+    print("Database index for 'username' failed to create:", e)
+
 def seed_jobs_if_empty():
     try:
         job_collection = db["jobs"]
