@@ -1,21 +1,27 @@
 import './styles/main.css'
-
+import React, { lazy, Suspense } from 'react';
 import {
     BrowserRouter,
     Routes,
     Route
 } from "react-router-dom";
 
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import CandidateDashboard from "./pages/CandidateDashboard";
-import RecruiterDashboard from "./pages/RecruiterDashboard";
-import AnalyticsDashboard from "./pages/AnalyticsDashboard";
-import Rankings from "./pages/Rankings";
-import SkillGap from "./pages/SkillGap";
-import ResumeUpload from "./pages/ResumeUpload";
-import CandidateDatabase from "./pages/CandidateDatabase";
+import LoadingSpinner from "./components/LoadingSpinner";
+
+// Lazy-loaded page components for bundle size reduction and code-splitting
+const Home = lazy(() => import("./pages/Home"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const CandidateDashboard = lazy(() => import("./pages/CandidateDashboard"));
+const RecruiterDashboard = lazy(() => import("./pages/RecruiterDashboard"));
+const AnalyticsDashboard = lazy(() => import("./pages/AnalyticsDashboard"));
+const Rankings = lazy(() => import("./pages/Rankings"));
+const SkillGap = lazy(() => import("./pages/SkillGap"));
+const ResumeScreening = lazy(() => import("./pages/ResumeScreening"));
+const CandidateDatabase = lazy(() => import("./pages/CandidateDatabase"));
+const JobPosts = lazy(() => import("./pages/JobPosts"));
+const VideoEvaluator = lazy(() => import("./pages/VideoEvaluator"));
+const MCQLeaderboard = lazy(() => import("./pages/MCQLeaderboard"));
 
 function App(){
 
@@ -23,59 +29,78 @@ function App(){
 
         <BrowserRouter>
 
-            <Routes>
+            <Suspense fallback={<LoadingSpinner />}>
 
-                <Route
-                    path="/"
-                    element={<Home />}
-                />
+                <Routes>
 
-                <Route
-                    path="/login"
-                    element={<Login />}
-                />
+                    <Route
+                        path="/"
+                        element={<Home />}
+                    />
 
-                <Route
-                    path="/register"
-                    element={<Register />}
-                />
+                    <Route
+                        path="/login"
+                        element={<Login />}
+                    />
 
-                <Route
-                    path="/candidate"
-                    element={<CandidateDashboard />}
-                />
+                    <Route
+                        path="/register"
+                        element={<Register />}
+                    />
 
-                <Route
-                    path="/recruiter"
-                    element={<RecruiterDashboard />}
-                />
+                    <Route
+                        path="/candidate"
+                        element={<CandidateDashboard />}
+                    />
 
-                <Route
-                    path="/analytics"
-                    element={<AnalyticsDashboard />}
-                />
+                    <Route
+                        path="/recruiter"
+                        element={<RecruiterDashboard />}
+                    />
 
-                <Route
-                    path="/rankings"
-                    element={<Rankings />}
-                />
+                    <Route
+                        path="/analytics"
+                        element={<AnalyticsDashboard />}
+                    />
 
-                <Route
-                    path="/skill-gap"
-                    element={<SkillGap />}
-                />
+                    <Route
+                        path="/rankings"
+                        element={<Rankings />}
+                    />
 
-                <Route
-                    path="/resume-upload"
-                    element={<ResumeUpload />}
-                />
+                    <Route
+                        path="/skill-gap"
+                        element={<SkillGap />}
+                    />
 
-                <Route
-                    path="/candidate-db"
-                    element={<CandidateDatabase />}
-                />
+                    <Route
+                        path="/resume-screening"
+                        element={<ResumeScreening />}
+                    />
 
-            </Routes>
+                    <Route
+                        path="/candidate-db"
+                        element={<CandidateDatabase />}
+                    />
+
+                    <Route
+                        path="/job-posts"
+                        element={<JobPosts />}
+                    />
+
+                    <Route
+                        path="/video-evaluator"
+                        element={<VideoEvaluator />}
+                    />
+
+                    <Route
+                        path="/mcq-leaderboard"
+                        element={<MCQLeaderboard />}
+                    />
+
+                </Routes>
+
+            </Suspense>
 
         </BrowserRouter>
 

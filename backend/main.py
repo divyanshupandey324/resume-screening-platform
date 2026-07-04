@@ -1,3 +1,9 @@
+from routes.recruiter_features import (
+    router as recruiter_features_router
+)
+from routes.candidate_features import (
+    router as candidate_features_router
+)
 from routes.offer_routes import (
     router as offer_router
 )
@@ -31,29 +37,39 @@ from routes.ai_routes import (
 )
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 from routes.candidate_routes import (
     router
 )
+import asyncio
+from database.db_seeder import run_db_seeding
+from database.connection import clear_default_jobs
 
 app = FastAPI(
     title="AI Recruitment Platform"
 )
 app.add_middleware(
-
     CORSMiddleware,
-
     allow_origins=["*"],
-
     allow_credentials=True,
-
     allow_methods=["*"],
-
     allow_headers=["*"]
-
+)
+app.add_middleware(
+    GZipMiddleware,
+    minimum_size=1000
 )
 
+@app.on_event("startup")
+async def startup_event():
+    # Run heavy database seeding and default job clearing in background threads
+    # to avoid blocking server start and request processing
+    asyncio.create_task(asyncio.to_thread(run_db_seeding))
+    asyncio.create_task(asyncio.to_thread(clear_default_jobs))
+
 app.include_router(router)
+
 
 
 @app.get("/")
@@ -92,4 +108,10 @@ app.include_router(
 )
 app.include_router(
     offer_router
+)
+app.include_router(
+    recruiter_features_router
+)
+app.include_router(
+    candidate_features_router
 )

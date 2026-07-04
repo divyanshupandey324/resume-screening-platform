@@ -45,3 +45,5 @@ build/
 *.sw?
 
 .vercel
+brain/
+*.db

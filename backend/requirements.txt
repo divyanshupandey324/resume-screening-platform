@@ -9,3 +9,8 @@ python-dotenv
 bcrypt
 pdfplumber
 certifi
+scikit-learn
+sentence-transformers
+python-docx
+sqlalchemy
+psycopg2-binary

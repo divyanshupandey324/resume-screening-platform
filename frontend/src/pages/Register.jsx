@@ -5,14 +5,15 @@ import { useNavigate } from "react-router-dom";
 export default function Register() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [email, setEmail] = useState("");
     const [role, setRole] = useState("candidate");
     const [message, setMessage] = useState("");
     const [isRegistered, setIsRegistered] = useState(false);
     const navigate = useNavigate();
 
     const handleRegister = async () => {
-        if (!username || !password) {
-            setMessage("Please enter both username and password");
+        if (!username || !password || !email) {
+            setMessage("Please enter username, email and password");
             return;
         }
 
@@ -21,6 +22,7 @@ export default function Register() {
                 "/register",
                 {
                     username,
+                    email,
                     password,
                     role
                 }
@@ -76,6 +78,15 @@ export default function Register() {
                         value={username}
                         onChange={(e)=> setUsername(e.target.value)}
                         style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #334155", background: "#1e293b", color: "#f8fafc" }}
+                    />
+
+                    <input
+                        type="email"
+                        placeholder="Email Address"
+                        value={email}
+                        onChange={(e)=> setEmail(e.target.value)}
+                        style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #334155", background: "#1e293b", color: "#f8fafc" }}
+                        required
                     />
 
                     <input

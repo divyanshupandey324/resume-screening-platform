@@ -165,6 +165,7 @@ export default function CandidateDatabase() {
                                 <div>
                                     <h3 style={{ margin: "0 0 5px 0", fontSize: "1.3rem", color: "#f8fafc" }}>{selectedCandidate.name}</h3>
                                     <p style={{ color: "#94a3b8", margin: 0 }}>{selectedCandidate.email}</p>
+                                    {selectedCandidate.phone && <p style={{ color: "#cbd5e1", margin: "4px 0 0 0", fontSize: "0.85rem" }}>📞 {selectedCandidate.phone}</p>}
                                     <p style={{ color: "#cbd5e1", fontSize: "0.9rem", marginTop: "10px" }}>
                                         Target Role: <strong>{selectedCandidate.target_job_title || "General Application"}</strong>
                                     </p>
@@ -235,6 +236,77 @@ export default function CandidateDatabase() {
                                         </ul>
                                     </div>
                                 )}
+
+                                <div style={{ background: "rgba(255,255,255,0.02)", padding: "15px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                                    <label style={{ display: "block", fontSize: "0.85rem", color: "#94a3b8", fontWeight: "600", marginBottom: "8px" }}>Pipeline Status</label>
+                                    <select
+                                        value={selectedCandidate.status || "Shortlisted"}
+                                        onChange={async (e) => {
+                                            const newStatus = e.target.value;
+                                            try {
+                                                await API.post("/candidate/update-status", {
+                                                    candidate_id: selectedCandidate._id,
+                                                    status: newStatus
+                                                });
+                                                setSelectedCandidate({ ...selectedCandidate, status: newStatus });
+                                                fetchCandidates();
+                                            } catch (err) {
+                                                console.error(err);
+                                                alert("Failed to update status.");
+                                            }
+                                        }}
+                                        style={{
+                                            width: "100%",
+                                            padding: "8px 12px",
+                                            borderRadius: "6px",
+                                            background: "#0f172a",
+                                            color: "white",
+                                            border: "1px solid #334155"
+                                        }}
+                                    >
+                                        <option value="Applied">Applied</option>
+                                        <option value="Shortlisted">Shortlisted</option>
+                                        <option value="Rejected">Rejected</option>
+                                        <option value="Joined">Joined</option>
+                                    </select>
+                                    {selectedCandidate.status === "Shortlisted" && (
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    await API.post("/notifications/send-email", {
+                                                        recipient_email: selectedCandidate.email,
+                                                        recipient_name: selectedCandidate.name,
+                                                        subject: `Application Shortlisted: ${selectedCandidate.target_job_title || "Job Position"}`,
+                                                        template_type: "shortlisted",
+                                                        job_title: selectedCandidate.target_job_title || "General Application"
+                                                    });
+                                                    alert("✓ Shortlist email sent successfully!");
+                                                } catch (err) {
+                                                    console.error(err);
+                                                    alert("Failed to send shortlist email.");
+                                                }
+                                            }}
+                                            className="btn"
+                                            style={{
+                                                marginTop: "12px",
+                                                width: "100%",
+                                                background: "rgba(99, 102, 241, 0.15)",
+                                                border: "1px solid #6366f1",
+                                                color: "#a5b4fc",
+                                                padding: "8px 12px",
+                                                borderRadius: "6px",
+                                                fontSize: "0.85rem",
+                                                fontWeight: "600",
+                                                cursor: "pointer",
+                                                transition: "all 0.2s"
+                                            }}
+                                            onMouseEnter={(e) => e.target.style.background = "rgba(99, 102, 241, 0.3)"}
+                                            onMouseLeave={(e) => e.target.style.background = "rgba(99, 102, 241, 0.15)"}
+                                        >
+                                            📧 Send Shortlist Email
+                                        </button>
+                                    )}
+                                </div>
 
                                 <div>
                                     <AIFeedbackSection feedback={selectedCandidate.feedback || "No feedback generated."} />

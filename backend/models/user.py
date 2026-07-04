@@ -10,3 +10,5 @@ class User(
     password: str
 
     role: str = "candidate"
+
+    email: str = ""

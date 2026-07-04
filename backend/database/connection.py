@@ -27,67 +27,51 @@ db = client["ai_recruitment_db"]
 # Ensure unique index on username to make query lookup O(1) and speed up authentication routes
 try:
     db["users"].create_index("username", unique=True)
-    print("Database index for 'username' created successfully")
+    print("Database unique index for 'username' created successfully")
 except Exception as e:
-    print("Database index for 'username' failed to create:", e)
+    print("Database unique index for 'username' failed to create, creating standard index instead:", e)
+    try:
+        db["users"].create_index("username")
+    except Exception:
+        pass
 
-def seed_jobs_if_empty():
+# Ensure standard lookup indexes on candidate and job collections to speed up API queries
+try:
+    db["users"].create_index("email")
+    db["candidates"].create_index("username")
+    db["candidates"].create_index("email")
+    db["candidates"].create_index("job_id")
+    db["candidates"].create_index("status")
+    db["candidates"].create_index("score")
+    db["candidates"].create_index("applied_at")
+    db["jobs"].create_index("recruiter_id")
+    
+    # New performance indexing setup
+    db["notifications"].create_index([("recipient_email", 1), ("created_at", -1)])
+    db["coding_submissions"].create_index([("username", 1), ("timestamp", -1)])
+    db["coding_submissions"].create_index([("username", 1), ("status", 1)])
+    db["coding_bookmarks"].create_index([("username", 1), ("problem_title", 1)])
+    db["mcq_results"].create_index([("test_title", 1), ("percentage", -1)])
+    db["mcqs"].create_index("password")
+    db["coding_questions"].create_index([("category", 1), ("difficulty", 1)])
+    db["otps"].create_index("email", unique=True)
+    db["otps"].create_index("created_at", expireAfterSeconds=600)
+    
+    print("Standard database indexes created successfully")
+except Exception as e:
+    print("Standard database indexes creation failed:", e)
+
+def clear_default_jobs():
     try:
         job_collection = db["jobs"]
-        if job_collection.count_documents({}) == 0:
-            default_jobs = [
-                {
-                    "title": "Software Engineer",
-                    "description": "Develop and maintain software applications using modern tech stacks.",
-                    "required_skills": ["python", "sql", "machine learning", "fastapi", "docker", "aws"],
-                    "minimum_experience": 2.0
-                },
-                {
-                    "title": "Frontend Developer",
-                    "description": "Responsible for building the user interface of our web applications.",
-                    "required_skills": ["react", "javascript", "typescript", "html5", "css3", "tailwind", "vite"],
-                    "minimum_experience": 1.0
-                },
-                {
-                    "title": "Backend Developer",
-                    "description": "Design, build and configure databases, APIs, and backend logic.",
-                    "required_skills": ["python", "fastapi", "django", "postgresql", "mongodb", "redis", "docker"],
-                    "minimum_experience": 2.0
-                },
-                {
-                    "title": "Full Stack Engineer",
-                    "description": "Work on both front-end and back-end portions of applications.",
-                    "required_skills": ["react", "node.js", "express", "mongodb", "javascript", "aws", "docker"],
-                    "minimum_experience": 3.0
-                },
-                {
-                    "title": "AI/ML Engineer",
-                    "description": "Design and build AI/ML systems and integrate LLMs.",
-                    "required_skills": ["python", "pytorch", "tensorflow", "scikit-learn", "machine learning", "deep learning", "nlp", "llms"],
-                    "minimum_experience": 2.0
-                },
-                {
-                    "title": "DevOps Engineer",
-                    "description": "Manage deployment pipelines and cloud infrastructure.",
-                    "required_skills": ["docker", "kubernetes", "aws", "ci/cd", "jenkins", "terraform", "linux", "git"],
-                    "minimum_experience": 3.0
-                },
-                {
-                    "title": "Data Scientist",
-                    "description": "Extract insights from data and build predictive ML models.",
-                    "required_skills": ["python", "sql", "pandas", "numpy", "matplotlib", "scikit-learn", "data analysis"],
-                    "minimum_experience": 1.5
-                },
-                {
-                    "title": "UI/UX Designer",
-                    "description": "Design intuitive user journeys and high-fidelity interfaces.",
-                    "required_skills": ["figma", "wireframing", "prototyping", "ui design", "user research"],
-                    "minimum_experience": 1.0
-                }
+        # Delete any pre-seeded jobs that do not have a recruiter_id or company
+        job_collection.delete_many({
+            "$or": [
+                {"recruiter_id": {"$exists": False}},
+                {"company": {"$exists": False}},
+                {"recruiter_id": "recruiter_default"}
             ]
-            job_collection.insert_many(default_jobs)
-            print("Successfully seeded default jobs in MongoDB")
+        })
+        print("Cleared default jobs from database successfully.")
     except Exception as err:
-        print("Failed to seed default jobs:", err)
-
-seed_jobs_if_empty()
+        print("Failed to clear default jobs:", err)

@@ -18,14 +18,20 @@ class LLMResponse:
 
 class FallbackModelWrapper:
     def __init__(self):
-        # Dynamically read variables on calls to allow runtime updates
-        pass
+        import threading
+        self._cache = {}
+        self._lock = threading.Lock()
 
     def _get_gemini_keys(self):
         val = os.getenv("GEMINI_API_KEY", "")
         if not val:
             return []
-        return [k.strip() for k in val.split(",") if k.strip()]
+        keys = [k.strip() for k in val.split(",") if k.strip()]
+        # Filter out keys that do not start with AIzaSy (invalid format for API key)
+        valid_keys = [k for k in keys if k.startswith("AIzaSy")]
+        if len(valid_keys) < len(keys):
+            logger.warning(f"Filtered out {len(keys) - len(valid_keys)} invalid Gemini API key format(s) (must start with 'AIzaSy').")
+        return valid_keys
 
     def _call_openai_api(self, url, api_key, model_name, prompt, generation_config=None, extra_headers=None):
         headers = {
@@ -61,6 +67,23 @@ class FallbackModelWrapper:
             raise e
 
     def generate_content(self, prompt, generation_config=None):
+        import hashlib
+        config_str = json.dumps(generation_config, sort_keys=True) if generation_config else ""
+        cache_key = hashlib.sha256(f"{prompt}|||{config_str}".encode("utf-8")).hexdigest()
+        
+        with self._lock:
+            if cache_key in self._cache:
+                logger.info("LLM Cache Hit")
+                return LLMResponse(self._cache[cache_key])
+                
+        response = self._generate_content_uncached(prompt, generation_config=generation_config)
+        
+        with self._lock:
+            self._cache[cache_key] = response.text
+            
+        return response
+
+    def _generate_content_uncached(self, prompt, generation_config=None):
         errors = []
 
         # 1. Gemini Keys (with rotation)

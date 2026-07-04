@@ -1,3 +1,25 @@
+:root {
+  --bg: #0f172a;
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --card-bg: rgba(255, 255, 255, 0.04);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --input-bg: #1e293b;
+  --input-text: #f8fafc;
+  --sidebar-bg: #0f172a;
+}
+
+[data-theme="light"] {
+  --bg: #f8fafc;
+  --text: #0f172a;
+  --text-muted: #475569;
+  --card-bg: rgba(0, 0, 0, 0.04);
+  --border-color: rgba(0, 0, 0, 0.1);
+  --input-bg: #e2e8f0;
+  --input-text: #0f172a;
+  --sidebar-bg: #f1f5f9;
+}
+
 *{
     margin:0;
     padding:0;
@@ -5,9 +27,10 @@
 }
 
 body{
-    background:#0f172a;
-    color:white;
+    background: var(--bg);
+    color: var(--text);
     font-family:'Segoe UI',sans-serif;
+    transition: background 0.3s ease, color 0.3s ease;
 }
 
 .page{
@@ -16,16 +39,11 @@ body{
 }
 
 .glass-card{
-    background:rgba(255,255,255,0.08);
+    background: var(--card-bg);
 
     backdrop-filter:blur(12px);
 
-    border:1px solid rgba(
-        255,
-        255,
-        255,
-        0.1
-    );
+    border:1px solid var(--border-color);
 
     border-radius:20px;
 
@@ -38,6 +56,7 @@ body{
         0,
         0.3
     );
+    transition: background 0.3s ease, border 0.3s ease, color 0.3s ease;
 }
 
 .grid{
@@ -83,7 +102,7 @@ body{
 
     width:250px;
 
-    background:#111827;
+    background: var(--sidebar-bg);
 
     padding:30px;
 }
@@ -129,22 +148,23 @@ body{
 
     padding:15px;
 
-    border:1px solid rgba(
-        255,
-        255,
-        255,
-        0.1
-    );
+    border:1px solid var(--border-color);
 }
-input{
+input, select, textarea {
 
     padding:12px;
 
     border-radius:10px;
 
-    border:none;
+    border:1px solid var(--border-color);
 
-    width:300px;
+    background: var(--input-bg);
+
+    color: var(--input-text);
+
+    outline: none;
+
+    transition: all 0.3s ease;
 }
 
 pre{
