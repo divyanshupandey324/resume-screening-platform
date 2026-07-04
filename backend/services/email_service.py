@@ -5,6 +5,8 @@ from database.mongodb import db
 
 email_collection = db["emails"]
 
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
 def get_html_template(template_type: str, recipient_name: str, details: dict) -> tuple:
     """
     Generates a professional HTML body and subject based on the email template type.
@@ -21,7 +23,7 @@ def get_html_template(template_type: str, recipient_name: str, details: dict) ->
             <h2 style="{title_styles}">Welcome, {recipient_name}!</h2>
             <p>Thank you for registering on our platform. Your account is successfully activated.</p>
             <p>You can now browse job positions, practice secure DSA coding exercises, and undergo mock interviews.</p>
-            <a href="http://localhost:5173/login" style="{button_styles}">Login to Platform</a>
+            <a href="{FRONTEND_URL}/login" style="{button_styles}">Login to Platform</a>
         </div>
         """
     elif template_type == "resume_received":
@@ -36,7 +38,7 @@ def get_html_template(template_type: str, recipient_name: str, details: dict) ->
                 <strong>Position:</strong> {details.get('job_title')}<br/>
                 <strong>Submission Time:</strong> {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             </div>
-            <a href="http://localhost:5173/candidate" style="{button_styles}">Check Candidate Portal</a>
+            <a href="{FRONTEND_URL}/candidate" style="{button_styles}">Check Candidate Portal</a>
         </div>
         """
     elif template_type == "mcq_invite":
@@ -54,7 +56,7 @@ def get_html_template(template_type: str, recipient_name: str, details: dict) ->
                 <strong>Time Limit:</strong> {details.get('time_limit')} Minutes<br/>
                 <strong>Expires:</strong> {details.get('expiry_time', '24 Hours')}
             </div>
-            <a href="http://localhost:5173/candidate" style="{button_styles}">Start Exam Now</a>
+            <a href="{FRONTEND_URL}/candidate" style="{button_styles}">Start Exam Now</a>
         </div>
         """
     elif template_type == "interview_invite":
@@ -70,7 +72,7 @@ def get_html_template(template_type: str, recipient_name: str, details: dict) ->
                 <strong>Type:</strong> {details.get('event_type', 'Technical Interview')}
             </div>
             <p>Ensure your webcam, microphone, and desktop screen-sharing permissions are ready before joining the mock assessment center.</p>
-            <a href="http://localhost:5173/candidate" style="{button_styles}">Go to Dashboard</a>
+            <a href="{FRONTEND_URL}/candidate" style="{button_styles}">Go to Dashboard</a>
         </div>
         """
     elif template_type == "shortlisted":
@@ -81,7 +83,7 @@ def get_html_template(template_type: str, recipient_name: str, details: dict) ->
             <p>Dear {recipient_name},</p>
             <p>Great news! Your profile meets the criteria for <strong>{details.get('job_title')}</strong> with an ATS score of <strong>{details.get('score')}%</strong>.</p>
             <p>The recruitment team will reach out shortly for the next rounds of interview evaluations.</p>
-            <a href="http://localhost:5173/candidate" style="{button_styles}">View Application</a>
+            <a href="{FRONTEND_URL}/candidate" style="{button_styles}">View Application</a>
         </div>
         """
     elif template_type == "rejected":
@@ -93,7 +95,7 @@ def get_html_template(template_type: str, recipient_name: str, details: dict) ->
             <p>Thank you for your interest in the <strong>{details.get('job_title')}</strong> role at our organization.</p>
             <p>We reviewed your credentials carefully, and while we appreciate your background, we have chosen to proceed with other candidates at this time.</p>
             <p>We encourage you to practice on the DSA Coding IDE and attempt other evaluations to strengthen your profile.</p>
-            <a href="http://localhost:5173/candidate" style="{button_styles}">Try Practice Coding</a>
+            <a href="{FRONTEND_URL}/candidate" style="{button_styles}">Try Practice Coding</a>
         </div>
         """
     elif template_type == "offer":
@@ -104,7 +106,7 @@ def get_html_template(template_type: str, recipient_name: str, details: dict) ->
             <p>Dear {recipient_name},</p>
             <p>Congratulations! We are thrilled to offer you the position of <strong>{details.get('job_title')}</strong>.</p>
             <p>Please review the mock offer letter details in your candidate notifications page.</p>
-            <a href="http://localhost:5173/candidate" style="{button_styles}">Review Offer Letter</a>
+            <a href="{FRONTEND_URL}/candidate" style="{button_styles}">Review Offer Letter</a>
         </div>
         """
     elif template_type == "update":
@@ -114,7 +116,7 @@ def get_html_template(template_type: str, recipient_name: str, details: dict) ->
             <h2 style="{title_styles}">Application Update</h2>
             <p>Dear {recipient_name},</p>
             <p>Your application status has been updated: <strong>{details.get('status')}</strong>.</p>
-            <a href="http://localhost:5173/candidate" style="{button_styles}">View Dashboard</a>
+            <a href="{FRONTEND_URL}/candidate" style="{button_styles}">View Dashboard</a>
         </div>
         """
     elif template_type == "otp":
