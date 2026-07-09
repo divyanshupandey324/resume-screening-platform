@@ -88,16 +88,23 @@ def send_otp(payload: ForgotPasswordSendOTP):
     if not user:
         return {"success": False, "message": "Email address not found"}
     
+    target_email = user.get("email")
+    if not target_email and "@" in user.get("username", ""):
+        target_email = user.get("username")
+        
+    if not target_email or "@" not in target_email:
+        return {"success": False, "message": "This account does not have a registered email address"}
+    
     otp = f"{random.randint(100000, 999999)}"
     db["otps"].update_one(
-        {"email": email},
+        {"email": target_email},
         {"$set": {"otp": otp, "created_at": datetime.datetime.utcnow()}},
         upsert=True
     )
     
     try:
-        recipient_name = user.get("username", email.split("@")[0])
-        send_email_notification("otp", email, recipient_name, {
+        recipient_name = user.get("username", target_email.split("@")[0])
+        send_email_notification("otp", target_email, recipient_name, {
             "subject": "Password Reset Verification Code",
             "otp": otp,
             "message": f"Your verification code for password reset is {otp}. This code is valid for 10 minutes."
@@ -117,7 +124,18 @@ def reset_password(payload: ForgotPasswordReset):
     if not new_password:
         return {"success": False, "message": "New password cannot be empty"}
         
-    otp_doc = db["otps"].find_one({"email": email})
+    user = user_collection.find_one({"$or": [{"email": email}, {"username": email}]})
+    if not user:
+        return {"success": False, "message": "User not found"}
+        
+    target_email = user.get("email")
+    if not target_email and "@" in user.get("username", ""):
+        target_email = user.get("username")
+        
+    if not target_email or "@" not in target_email:
+        return {"success": False, "message": "This account does not have a registered email address"}
+        
+    otp_doc = db["otps"].find_one({"email": target_email})
     if not otp_doc or otp_doc.get("otp") != otp:
         return {"success": False, "message": "Invalid or expired verification code"}
         
@@ -126,6 +144,6 @@ def reset_password(payload: ForgotPasswordReset):
         {"$or": [{"email": email}, {"username": email}]},
         {"$set": {"password": hashed}}
     )
-    db["otps"].delete_one({"email": email})
+    db["otps"].delete_one({"email": target_email})
     
     return {"success": True, "message": "Password updated successfully"}

@@ -1,7 +1,14 @@
 import os
 import datetime
+import smtplib
+import logging
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 from bson import ObjectId
 from database.mongodb import db
+
+logger = logging.getLogger("EmailService")
 
 email_collection = db["emails"]
 
@@ -160,19 +167,67 @@ def get_html_template(template_type: str, recipient_name: str, details: dict) ->
         
     return subject, body
 
+def _send_smtp_email(recipient_email: str, subject: str, html_content: str) -> tuple:
+    """
+    Sends a real email using SMTP configuration.
+    Returns a tuple (status, error_msg).
+    """
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port_str = os.getenv("SMTP_PORT", "587")
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+
+    if not smtp_user or not smtp_password:
+        return "Failed", "SMTP configuration missing: SMTP_USER or SMTP_PASSWORD is not set"
+
+    try:
+        smtp_port = int(smtp_port_str)
+    except ValueError:
+        return "Failed", f"Invalid SMTP_PORT: {smtp_port_str}"
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = formataddr(("AI Recruitment Platform", smtp_user))
+        msg["To"] = recipient_email
+        
+        part = MIMEText(html_content, "html")
+        msg.attach(part)
+        
+        # Connect to SMTP server
+        if smtp_port == 465:
+            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10)
+        else:
+            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            
+        server.login(smtp_user, smtp_password)
+        server.sendmail(smtp_user, recipient_email, msg.as_string())
+        server.quit()
+        return "Sent", None
+    except Exception as e:
+        logger.error(f"Failed to send email to {recipient_email}: {e}")
+        return "Failed", str(e)
+
 def send_email_notification(template_type: str, recipient_email: str, recipient_name: str, details: dict) -> dict:
     """
-    Simulates sending an email by logging to the database.
-    Since we want a real history and retry system, this writes immediately to MongoDB.
+    Sends an email notification via SMTP (if configured) or logs a failure.
+    Writes the email attempt immediately to MongoDB.
     """
     subject, html_content = get_html_template(template_type, recipient_name, details)
     
-    # In a real system, smtplib would send this. We simulate SMTP check:
-    smtp_configured = os.getenv("SMTP_HOST") is not None
+    # Try sending via real SMTP if user/password are configured, otherwise log config missing
+    smtp_configured = os.getenv("SMTP_USER") is not None and os.getenv("SMTP_PASSWORD") is not None
     
-    status = "Sent" if smtp_configured else "Failed"
-    error_msg = None if smtp_configured else "SMTP Connection Timeout (Simulated: fallback to database log, ready to retry)"
-    
+    if smtp_configured:
+        status, error_msg = _send_smtp_email(recipient_email, subject, html_content)
+    else:
+        status = "Failed"
+        error_msg = "SMTP configuration missing: SMTP_USER and SMTP_PASSWORD environment variables are not configured."
+        logger.warning(f"Simulating email to {recipient_email} (no SMTP configured). Subject: {subject}")
+
     log_doc = {
         "recipient_email": recipient_email,
         "recipient_name": recipient_name,
@@ -191,15 +246,30 @@ def send_email_notification(template_type: str, recipient_email: str, recipient_
 
 def retry_email(email_id: str) -> dict:
     """
-    Retries sending a failed email, resetting its status to Sent.
+    Retries sending a failed email using SMTP connection and updates status in MongoDB.
     """
     doc = email_collection.find_one({"_id": ObjectId(email_id)})
     if not doc:
         return {"error": "Email log not found"}
         
-    # We update status to Sent upon retry
+    subject = doc.get("subject", "No Subject")
+    html_content = doc.get("body_html", "")
+    recipient_email = doc.get("recipient_email")
+    
+    status, error_msg = _send_smtp_email(recipient_email, subject, html_content)
+    
     email_collection.update_one(
         {"_id": ObjectId(email_id)},
-        {"$set": {"status": "Sent", "error_msg": None, "retried_at": datetime.datetime.utcnow().isoformat()}}
+        {
+            "$set": {
+                "status": status,
+                "error_msg": error_msg,
+                "retried_at": datetime.datetime.utcnow().isoformat()
+            }
+        }
     )
-    return {"message": "Email sent successfully after retry"}
+    
+    if status == "Sent":
+        return {"message": "Email sent successfully after retry"}
+    else:
+        return {"error": f"Failed to send email on retry: {error_msg}"}
