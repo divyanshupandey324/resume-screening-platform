@@ -494,43 +494,7 @@ export default function JobPosts() {
                                                         <option value="Rejected">Rejected</option>
                                                     </select>
                                                 </div>
-                                                {selectedApplicant.status === "Shortlisted" && (
-                                                    <button
-                                                        onClick={async () => {
-                                                            try {
-                                                                await API.post("/notifications/send-email", {
-                                                                    recipient_email: selectedApplicant.email,
-                                                                    recipient_name: selectedApplicant.name,
-                                                                    subject: `Shortlist Notification: ${selectedApplicant.target_job_title || "Job Position"}`,
-                                                                    template_type: "shortlisted",
-                                                                    job_title: selectedApplicant.target_job_title || "General Application"
-                                                                });
-                                                                alert("✓ Shortlist email sent successfully!");
-                                                            } catch (err) {
-                                                                console.error(err);
-                                                                alert("Failed to send shortlist email.");
-                                                            }
-                                                        }}
-                                                        className="btn"
-                                                        style={{
-                                                            marginTop: "8px",
-                                                            width: "100%",
-                                                            background: "rgba(99, 102, 241, 0.15)",
-                                                            border: "1px solid #6366f1",
-                                                            color: "#a5b4fc",
-                                                            padding: "6px 12px",
-                                                            borderRadius: "6px",
-                                                            fontSize: "0.8rem",
-                                                            fontWeight: "600",
-                                                            cursor: "pointer",
-                                                            transition: "all 0.2s"
-                                                        }}
-                                                        onMouseEnter={(e) => e.target.style.background = "rgba(99, 102, 241, 0.3)"}
-                                                        onMouseLeave={(e) => e.target.style.background = "rgba(99, 102, 241, 0.15)"}
-                                                    >
-                                                        📧 Send Email
-                                                    </button>
-                                                )}
+
                                                 
                                                 <div style={{ 
                                                     background: "rgba(99, 102, 241, 0.1)", 

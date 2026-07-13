@@ -213,21 +213,11 @@ def _send_smtp_email(recipient_email: str, subject: str, html_content: str) -> t
 
 def send_email_notification(template_type: str, recipient_email: str, recipient_name: str, details: dict) -> dict:
     """
-    Sends an email notification via SMTP (if configured) or logs a failure.
-    Writes the email attempt immediately to MongoDB.
+    Dummy/No-op email dispatch as email-sending is disabled.
+    Writes the attempt to MongoDB with status 'Disabled'.
     """
     subject, html_content = get_html_template(template_type, recipient_name, details)
     
-    # Try sending via real SMTP if user/password are configured, otherwise log config missing
-    smtp_configured = os.getenv("SMTP_USER") is not None and os.getenv("SMTP_PASSWORD") is not None
-    
-    if smtp_configured:
-        status, error_msg = _send_smtp_email(recipient_email, subject, html_content)
-    else:
-        status = "Failed"
-        error_msg = "SMTP configuration missing: SMTP_USER and SMTP_PASSWORD environment variables are not configured."
-        logger.warning(f"Simulating email to {recipient_email} (no SMTP configured). Subject: {subject}")
-
     log_doc = {
         "recipient_email": recipient_email,
         "recipient_name": recipient_name,
@@ -235,13 +225,17 @@ def send_email_notification(template_type: str, recipient_email: str, recipient_
         "body_html": html_content,
         "template_type": template_type,
         "details": details,
-        "status": status,
-        "error_msg": error_msg,
+        "status": "Disabled",
+        "error_msg": "Email sending has been disabled globally by system administrator.",
         "created_at": datetime.datetime.utcnow().isoformat()
     }
     
-    inserted = email_collection.insert_one(log_doc)
-    log_doc["_id"] = str(inserted.inserted_id)
+    try:
+        inserted = email_collection.insert_one(log_doc)
+        log_doc["_id"] = str(inserted.inserted_id)
+    except Exception as e:
+        logger.error(f"Failed to log disabled email template to DB: {e}")
+        
     return log_doc
 
 def retry_email(email_id: str) -> dict:

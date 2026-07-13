@@ -82,31 +82,71 @@ Based on your profile, here are some recommendations:
 - **Interview Tip**: Always explain your time complexity before writing the code!"""
         }
 
+def check_language_mismatch(language: str, code: str) -> str:
+    """
+    Checks for code language mismatch and returns an error message if one is found.
+    Otherwise, returns an empty string.
+    """
+    code_str = code.strip()
+    lang = language.lower()
+    
+    # 1. Java check
+    if lang == "java":
+        looks_like_python = ("def " in code_str or "elif " in code_str or "print " in code_str or "import sys" in code_str)
+        looks_like_js = ("let " in code_str or "const " in code_str or "function " in code_str or "console.log" in code_str)
+        looks_like_cpp = ("cout <<" in code_str or "cin >>" in code_str or "#include" in code_str or "using namespace std" in code_str)
+        lacks_java_structure = ("class " not in code_str and ";" not in code_str)
+        if looks_like_python or looks_like_js or looks_like_cpp or lacks_java_structure:
+            detected = "Python" if looks_like_python else ("JavaScript" if looks_like_js else ("C++" if looks_like_cpp else "Non-Java"))
+            return f"Compilation Error: Language mismatch. Selected language is Java, but the code appears to be written in {detected}."
+
+    # 2. Python check
+    elif lang == "python":
+        looks_like_java = ("public static void main" in code_str or "System.out.print" in code_str or "class " in code_str and ";" in code_str)
+        looks_like_js = ("let " in code_str or "const " in code_str or "function " in code_str or "console.log" in code_str)
+        looks_like_cpp = ("cout <<" in code_str or "cin >>" in code_str or "#include" in code_str or "using namespace std" in code_str)
+        if looks_like_java or looks_like_js or looks_like_cpp:
+            detected = "Java" if looks_like_java else ("JavaScript" if looks_like_js else ("C++" if looks_like_cpp else "Non-Python"))
+            return f"Compilation Error: Language mismatch. Selected language is Python, but the code appears to be written in {detected}."
+
+    # 3. JavaScript check
+    elif lang in ["javascript", "js"]:
+        looks_like_python = ("def " in code_str or "elif " in code_str or "print " in code_str or "import sys" in code_str)
+        looks_like_java = ("public static void main" in code_str or "System.out.print" in code_str or "String[] args" in code_str)
+        looks_like_cpp = ("cout <<" in code_str or "cin >>" in code_str or "#include" in code_str or "using namespace std" in code_str)
+        if looks_like_python or looks_like_java or looks_like_cpp:
+            detected = "Python" if looks_like_python else ("Java" if looks_like_java else ("C++" if looks_like_cpp else "Non-JavaScript"))
+            return f"Compilation Error: Language mismatch. Selected language is JavaScript, but the code appears to be written in {detected}."
+
+    # 4. C++ / C check
+    elif lang in ["cpp", "c"]:
+        looks_like_python = ("def " in code_str or "elif " in code_str or "print " in code_str or "import sys" in code_str)
+        looks_like_js = ("let " in code_str or "const " in code_str or "function " in code_str or "console.log" in code_str)
+        looks_like_java = ("public static void main" in code_str or "System.out.print" in code_str or "String[] args" in code_str)
+        if looks_like_python or looks_like_js or looks_like_java:
+            detected = "Python" if looks_like_python else ("JavaScript" if looks_like_js else ("Java" if looks_like_java else f"Non-{lang.upper()}"))
+            return f"Compilation Error: Language mismatch. Selected language is {lang.upper()}, but the code appears to be written in {detected}."
+
+    return ""
+
 # --- 2. Built-in IDE Code Execution Simulator ---
 @router.post("/candidate/execute-code")
 async def execute_code(execution: CodeExecution):
-    # Enforce Java code constraint: If Java is selected, only Java code is allowed
-    if execution.language.lower() == "java":
-        code_str = execution.code.strip()
-        looks_like_python = ("def " in code_str or "# " in code_str or "elif " in code_str or "print " in code_str)
-        looks_like_js = ("let " in code_str or "const " in code_str or "function " in code_str or "console.log" in code_str)
-        looks_like_cpp = ("cout <<" in code_str or "cin >>" in code_str or "#include" in code_str)
-        lacks_java_structure = ("class " not in code_str and ";" not in code_str)
-        
-        if (looks_like_python or looks_like_js or looks_like_cpp) or lacks_java_structure:
-            detected = "Python" if looks_like_python else ("JavaScript" if looks_like_js else ("C++" if looks_like_cpp else "Non-Java"))
-            return {
-                "compile_success": False,
-                "score": 0,
-                "time_complexity": "N/A",
-                "memory_usage": "N/A",
-                "runtime_ms": 0,
-                "memory_mb": 0.0,
-                "beats_percentage": 0.0,
-                "error_message": f"Compilation Error: Language mismatch. Selected language is Java, but the code appears to be written in {detected}.",
-                "feedback": "Please write valid Java code when Java is selected.",
-                "test_cases": []
-            }
+    # Enforce generic code constraint: Code must match the selected language
+    mismatch_error = check_language_mismatch(execution.language, execution.code)
+    if mismatch_error:
+        return {
+            "compile_success": False,
+            "score": 0,
+            "time_complexity": "N/A",
+            "memory_usage": "N/A",
+            "runtime_ms": 0,
+            "memory_mb": 0.0,
+            "beats_percentage": 0.0,
+            "error_message": mismatch_error,
+            "feedback": f"Please write valid {execution.language} code when {execution.language} is selected.",
+            "test_cases": []
+        }
 
     # Fetch test cases if the question exists in database
     question = questions_collection.find_one({"title": execution.problem_title})
@@ -127,41 +167,35 @@ async def execute_code(execution: CodeExecution):
     {execution.code}
     
     CRITICAL EVALUATION GUIDELINES:
-    1. Perform a thorough, line-by-line syntax check for the selected language ('{execution.language}').
-       If there are any syntax errors (e.g. missing semicolons, mismatching braces, invalid keywords, wrong syntax format), or type mismatch/reference errors, you MUST return compile_success = False and classify the error.
+    1. Perform a thorough, line-by-line check for the selected language ('{execution.language}').
+       If there are any errors present in the code, you MUST return compile_success = False, score = 0, and classify the error.
     2. Check for logic errors, hardcoded solutions, and boundary conditions.
        - A hardcoded solution (e.g. simply returning a constant to pass the first test case but not handling general inputs) is a logical failure. You MUST mark such code with a low score and set the failed test cases in the output.
        - The solution must pass EVERY single test case to get a score of 100.
-    3. If the selected language is 'java', double-check that the code is written in valid Java. If the user has written Python code, JavaScript code, or C++ code when Java is selected, you MUST set compile_success = False, score = 0, and set error_message to 'Compilation Error: Language mismatch. Code is not valid Java.'.
+    3. Double-check that the code is written in valid '{execution.language}'. If the user has written code in another programming language (e.g., Python, JavaScript, Java, C++, C) than the selected '{execution.language}', you MUST set compile_success = False, score = 0, and set error_message to 'Compilation Error: Language mismatch. Code is not valid {execution.language}.'.
     4. Provide realistic values for runtime_ms, memory_mb, and beats_percentage.
     5. ERROR CLASSIFICATION REQUIREMENT:
-       If compile_success is False, the code fails to compile or run, or if the score is less than 100 (e.g. fails test cases), you MUST analyze and classify the error into exactly one of the following categories, and place this exact classification name (optionally followed by specific compiler/runtime traceback/details) in the `error_message` field:
-       - Syntax Error
-       - Compilation Error (Compile-Time Error)
-       - Runtime Error
-       - Logical Error
-       - Semantic Error
-       - Wrong Answer (WA)
-       - Time Limit Exceeded (TLE)
-       - Memory Limit Exceeded (MLE)
-       - Output Limit Exceeded (OLE)
-       - Presentation Error (PE)
-       - Internal Error (IE)
-       - System Error
-       - Segmentation Fault (SIGSEGV)
-       - Stack Overflow Error
-       - Out of Memory Error (OOM)
-       - Null Pointer Exception (NPE)
-       - Array Index Out of Bounds Exception
-       - Arithmetic Exception
-       - Number Format Exception
-       - Illegal Argument Exception
-       - Class Cast Exception
-       - Input Mismatch Exception
-       - File Not Found Exception
-       - IOException
-       - Timeout Error
-       - Assertion Error
+       If compile_success is False, the code fails to compile or run, or if the score is less than 100 (e.g. fails test cases), or if any of the following errors is present in the code, you MUST analyze and classify the error into exactly one of the following categories, and place this exact classification name (optionally followed by specific compiler/runtime traceback/details) in the `error_message` field:
+       - Syntax Errors
+       - Compile-Time Errors
+       - Runtime Errors
+       - Logical Errors
+       - Semantic Errors
+       - Linker Errors
+       - Type Errors
+       - Arithmetic Errors
+       - Memory Errors
+       - Resource Errors
+       - Input/Output (I/O) Errors
+       - Exception Errors
+       - Overflow and Underflow Errors
+       - Concurrency (Thread) Errors
+       - Configuration Errors
+       - Dependency Errors
+       - Security Errors
+       - Infinite Loop Errors
+       - Recursion Errors (Stack Overflow)
+       - Null Reference (Null Pointer) Error
     
     Evaluate the solution and return ONLY a JSON object:
     - compile_success: bool

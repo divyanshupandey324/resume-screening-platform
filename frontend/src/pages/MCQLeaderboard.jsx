@@ -359,25 +359,7 @@ export default function MCQLeaderboard() {
                                         <div style={{ textAlign: "right", alignSelf: "center", display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
                                             <h4 style={{ margin: 0, color: "#34d399" }}>{cand.percentage}%</h4>
                                             <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Score: {cand.score} / {cand.total_marks}</span>
-                                            <button
-                                                onClick={() => handleSendMCQEmail(cand)}
-                                                style={{
-                                                    marginTop: "8px",
-                                                    background: "rgba(99, 102, 241, 0.12)",
-                                                    border: "1px solid rgba(99, 102, 241, 0.3)",
-                                                    color: "#a5b4fc",
-                                                    padding: "4px 10px",
-                                                    borderRadius: "6px",
-                                                    cursor: "pointer",
-                                                    fontSize: "0.72rem",
-                                                    fontWeight: "600",
-                                                    transition: "all 0.2s"
-                                                }}
-                                                onMouseEnter={(e) => e.target.style.background = "rgba(99, 102, 241, 0.25)"}
-                                                onMouseLeave={(e) => e.target.style.background = "rgba(99, 102, 241, 0.12)"}
-                                            >
-                                                📧 Send Email
-                                            </button>
+
                                         </div>
                                     </div>
                                 ))

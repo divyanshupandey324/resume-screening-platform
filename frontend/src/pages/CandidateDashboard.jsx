@@ -87,6 +87,20 @@ export default function CandidateDashboard() {
         return () => clearInterval(interval);
     }, [username]);
 
+    useEffect(() => {
+        const handleGlobalClick = (e) => {
+            if (!e.target.closest('#notification-bell-btn')) {
+                setShowNotifications(false);
+            }
+        };
+        document.addEventListener("click", handleGlobalClick);
+        document.addEventListener("touchstart", handleGlobalClick);
+        return () => {
+            document.removeEventListener("click", handleGlobalClick);
+            document.removeEventListener("touchstart", handleGlobalClick);
+        };
+    }, []);
+
     const handleMarkAsRead = async (id) => {
         try {
             await API.post(`/candidate/notifications/read/${id}`);
@@ -201,7 +215,7 @@ export default function CandidateDashboard() {
     });
 
     // 4. Timed MCQ Assessment State
-    const [mcqCreds, setMcqCreds] = useState({ email: "", candidate_id: "", password: "" });
+    const [mcqCreds, setMcqCreds] = useState({ email: "", password: "" });
     const [mcqActiveTest, setMcqActiveTest] = useState(null);
     const [mcqAnswers, setMcqAnswers] = useState({});
     const [mcqTimeLeft, setMcqTimeLeft] = useState(0);
@@ -252,7 +266,6 @@ export default function CandidateDashboard() {
                 test_title: mcqActiveTest.title,
                 candidate_name: username,
                 candidate_email: mcqCreds.email,
-                candidate_id: mcqCreds.candidate_id,
                 password: mcqCreds.password,
                 answers: mcqAnswers
             };
@@ -509,6 +522,7 @@ export default function CandidateDashboard() {
                     {/* Live Notifications Bell Dropdown */}
                     <div style={{ position: "relative" }}>
                         <button 
+                            id="notification-bell-btn"
                             onClick={() => setShowNotifications(!showNotifications)}
                             style={{ background: "transparent", border: "none", color: "#94a3b8", fontSize: "1.3rem", cursor: "pointer", position: "relative" }}
                         >
@@ -684,7 +698,6 @@ export default function CandidateDashboard() {
                                     <p style={{ fontSize: "0.8rem", color: "#94a3b8", marginBottom: "20px" }}>Enter the test credentials dispatched to your registered email to unlock the timed exam portal.</p>
                                     <form onSubmit={handleValidateMCQ} style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
                                         <input type="email" placeholder="Registered Email" value={mcqCreds.email} onChange={e => setMcqCreds({ ...mcqCreds, email: e.target.value })} style={{ width: "100%", background: "#1e293b", color: "white", border: "1px solid #334155" }} required />
-                                        <input type="text" placeholder="Candidate ID" value={mcqCreds.candidate_id} onChange={e => setMcqCreds({ ...mcqCreds, candidate_id: e.target.value })} style={{ width: "100%", background: "#1e293b", color: "white", border: "1px solid #334155" }} required />
                                         <input type="password" placeholder="Test Password" value={mcqCreds.password} onChange={e => setMcqCreds({ ...mcqCreds, password: e.target.value })} style={{ width: "100%", background: "#1e293b", color: "white", border: "1px solid #334155" }} required />
                                         <button className="btn" type="submit" style={{ width: "100%" }}>Verify & Enter Assessment</button>
                                         {mcqLoginError && <p style={{ color: "#f87171", fontSize: "0.8rem", textAlign: "center", margin: 0 }}>{mcqLoginError}</p>}

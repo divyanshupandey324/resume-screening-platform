@@ -61,7 +61,7 @@ class MCQSubmission(BaseModel):
     test_title: str
     candidate_name: str
     candidate_email: str
-    candidate_id: str
+    candidate_id: str = ""
     password: str
     answers: Dict[str, str]
 
@@ -662,10 +662,9 @@ def create_mcq_test(test: MCQCreate):
 @router.post("/mcq/validate")
 def validate_mcq_login(data: dict):
     email = data.get("email", "").strip().lower()
-    candidate_id = data.get("candidate_id", "").strip()
     password = data.get("password", "").strip()
     
-    if not email or not candidate_id or not password:
+    if not email or not password:
         return {"success": False, "message": "All fields are required"}
         
     test = mcqs_collection.find_one({"password": password})
