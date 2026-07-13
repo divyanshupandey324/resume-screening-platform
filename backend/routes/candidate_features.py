@@ -129,6 +129,72 @@ def check_language_mismatch(language: str, code: str) -> str:
 
     return ""
 
+def check_basic_syntax_errors(language: str, code: str) -> str:
+    """
+    Checks for obvious syntax errors programmatically, such as missing semicolons.
+    Returns an error message if an error is found, else empty string.
+    """
+    lang = language.lower()
+    lines = code.split("\n")
+    
+    if lang in ["java", "cpp", "c"]:
+        in_multiline_comment = False
+        for idx, line in enumerate(lines, 1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            
+            # Multi-line comment parsing
+            if "/*" in stripped:
+                in_multiline_comment = True
+            if in_multiline_comment:
+                if "*/" in stripped:
+                    in_multiline_comment = False
+                continue
+            
+            # Skip single-line comments, preprocessor statements, annotations
+            if stripped.startswith("//") or stripped.startswith("#") or stripped.startswith("@"):
+                continue
+                
+            # Skip control structures / declarations ending with allowed terminators/operators
+            ends_allowed = ("{", "}", ";", ",", "\\", "+", "-", "*", "/", "%", "&", "|", "^", "?", "=", "<", ">", "!", ":")
+            if stripped.endswith(ends_allowed):
+                continue
+                
+            # Skip signature/structure definitions / control flow starts
+            starts_to_skip = (
+                "class ", "public class ", "private class ", "protected class ", 
+                "namespace ", "template", "struct ", "union ", "interface ",
+                "if", "for", "while", "switch", "else", "try", "catch"
+            )
+            if any(stripped.startswith(prefix) for prefix in starts_to_skip):
+                continue
+                
+            # If the next non-empty line starts with '{', this is a function/block header definition
+            next_line_starts_with_brace = False
+            next_line_continues = False
+            for next_line in lines[idx:]:
+                next_stripped = next_line.strip()
+                if next_stripped:
+                    if next_stripped.startswith("{"):
+                        next_line_starts_with_brace = True
+                    elif next_stripped.startswith(("+", "-", "*", "/", "%", "&", "|", "^", "?", "=", "<", ">", "!", ":", ".", "&&", "||")):
+                        next_line_continues = True
+                    break
+            if next_line_starts_with_brace or next_line_continues:
+                continue
+                
+            # Otherwise, it's a statement that must have a semicolon!
+            return f"Syntax Error: Missing semicolon ';' at line {idx}: '{line.strip()}'"
+
+    elif lang == "python":
+        try:
+            compile(code, "<string>", "exec")
+        except SyntaxError as e:
+            return f"Syntax Error: {e.msg} at line {e.lineno}"
+            
+    return ""
+
 # --- 2. Built-in IDE Code Execution Simulator ---
 @router.post("/candidate/execute-code")
 async def execute_code(execution: CodeExecution):
@@ -145,6 +211,22 @@ async def execute_code(execution: CodeExecution):
             "beats_percentage": 0.0,
             "error_message": mismatch_error,
             "feedback": f"Please write valid {execution.language} code when {execution.language} is selected.",
+            "test_cases": []
+        }
+
+    # Programmatic syntax error check
+    syntax_error = check_basic_syntax_errors(execution.language, execution.code)
+    if syntax_error:
+        return {
+            "compile_success": False,
+            "score": 0,
+            "time_complexity": "N/A",
+            "memory_usage": "N/A",
+            "runtime_ms": 0,
+            "memory_mb": 0.0,
+            "beats_percentage": 0.0,
+            "error_message": "Syntax Errors: " + syntax_error,
+            "feedback": f"Compilation failed due to a syntax error in your code: {syntax_error}",
             "test_cases": []
         }
 
@@ -167,8 +249,11 @@ async def execute_code(execution: CodeExecution):
     {execution.code}
     
     CRITICAL EVALUATION GUIDELINES:
-    1. Perform a thorough, line-by-line check for the selected language ('{execution.language}').
-       If there are any errors present in the code, you MUST return compile_success = False, score = 0, and classify the error.
+    1. Perform a thorough, line-by-line syntax check for the selected language ('{execution.language}').
+       - You MUST NOT ignore or be lenient with missing semicolons, missing brackets, unbalanced parentheses, or typos in variable names, function names, keywords, or brackets.
+       - In C, C++, and Java, every statement must correctly end with a semicolon (;). If any semicolon is missing, you MUST return compile_success = False, score = 0, and set error_message to 'Syntax Errors: Missing semicolon ;'.
+       - In Python, verify indentation, brackets, and colons (:). Any indentation or syntax issue MUST return compile_success = False, score = 0.
+       - If there are any compiler, syntax, runtime, or logical errors present in the code, you MUST return compile_success = False, score = 0, and classify the error.
     2. Check for logic errors, hardcoded solutions, and boundary conditions.
        - A hardcoded solution (e.g. simply returning a constant to pass the first test case but not handling general inputs) is a logical failure. You MUST mark such code with a low score and set the failed test cases in the output.
        - The solution must pass EVERY single test case to get a score of 100.
@@ -305,14 +390,24 @@ def get_coding_stats(username: str):
         sub["_id"] = str(sub["_id"])
         history.append(sub)
         
+    # Calculate easy, medium, and hard counts
+    solved_q_docs = list(questions_collection.find({"title": {"$in": solved_problems}}, {"title": 1, "difficulty": 1}))
+    easy_solved = sum(1 for q in solved_q_docs if q.get("difficulty", "").lower() == "easy")
+    medium_solved = sum(1 for q in solved_q_docs if q.get("difficulty", "").lower() == "medium")
+    hard_solved = sum(1 for q in solved_q_docs if q.get("difficulty", "").lower() == "hard")
+        
     return {
         "solved_count": len(solved_problems),
         "solved_problems": solved_problems,
+        "easy_solved": easy_solved,
+        "medium_solved": medium_solved,
+        "hard_solved": hard_solved,
         "attempted_count": len(attempted_problems),
         "accuracy": accuracy,
         "bookmarks": bookmarks,
         "history": history
     }
+
 
 @router.post("/candidate/coding-bookmarks/toggle")
 def toggle_bookmark(payload: BookmarkPayload):

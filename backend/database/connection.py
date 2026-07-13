@@ -26,6 +26,11 @@ db = client["ai_recruitment_db"]
 
 # Ensure unique index on username to make query lookup O(1) and speed up authentication routes
 try:
+    existing_indexes = db["users"].index_information()
+    if "username_1" in existing_indexes:
+        if not existing_indexes["username_1"].get("unique"):
+            db["users"].drop_index("username_1")
+            print("Dropped legacy non-unique username index to upgrade it")
     db["users"].create_index("username", unique=True)
     print("Database unique index for 'username' created successfully")
 except Exception as e:
@@ -34,6 +39,7 @@ except Exception as e:
         db["users"].create_index("username")
     except Exception:
         pass
+
 
 # Ensure standard lookup indexes on candidate and job collections to speed up API queries
 try:

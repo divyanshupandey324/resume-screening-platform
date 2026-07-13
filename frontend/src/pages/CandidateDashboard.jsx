@@ -785,6 +785,23 @@ export default function CandidateDashboard() {
                                             <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "4px" }}>Accuracy</div>
                                         </div>
                                     </div>
+                                    
+                                    {/* Difficulty breakdown */}
+                                    <div style={{ marginTop: "15px", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px", textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "15px" }}>
+                                        <div style={{ background: "rgba(16, 185, 129, 0.04)", border: "1px solid rgba(16, 185, 129, 0.08)", padding: "6px", borderRadius: "6px" }}>
+                                            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#10b981" }}>{dsaStats.easy_solved || 0}</div>
+                                            <div style={{ fontSize: "0.7rem", color: "#10b981", fontWeight: "600" }}>Easy</div>
+                                        </div>
+                                        <div style={{ background: "rgba(245, 158, 11, 0.04)", border: "1px solid rgba(245, 158, 11, 0.08)", padding: "6px", borderRadius: "6px" }}>
+                                            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#f59e0b" }}>{dsaStats.medium_solved || 0}</div>
+                                            <div style={{ fontSize: "0.7rem", color: "#f59e0b", fontWeight: "600" }}>Medium</div>
+                                        </div>
+                                        <div style={{ background: "rgba(239, 68, 68, 0.04)", border: "1px solid rgba(239, 68, 68, 0.08)", padding: "6px", borderRadius: "6px" }}>
+                                            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#ef4444" }}>{dsaStats.hard_solved || 0}</div>
+                                            <div style={{ fontSize: "0.7rem", color: "#ef4444", fontWeight: "600" }}>Hard</div>
+                                        </div>
+                                    </div>
+
                                     {dsaStats.bookmarks && dsaStats.bookmarks.length > 0 && (
                                         <div style={{ marginTop: "15px", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
                                             <span style={{ fontSize: "0.8rem", color: "#cbd5e1", fontWeight: "bold" }}>⭐ Bookmarked Challenges ({dsaStats.bookmarks.length}):</span>
