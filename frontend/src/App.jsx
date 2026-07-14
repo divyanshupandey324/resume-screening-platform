@@ -20,8 +20,8 @@ const SkillGap = lazy(() => import("./pages/SkillGap"));
 const ResumeScreening = lazy(() => import("./pages/ResumeScreening"));
 const CandidateDatabase = lazy(() => import("./pages/CandidateDatabase"));
 const JobPosts = lazy(() => import("./pages/JobPosts"));
-const VideoEvaluator = lazy(() => import("./pages/VideoEvaluator"));
 const MCQLeaderboard = lazy(() => import("./pages/MCQLeaderboard"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 
 function App(){
 
@@ -41,6 +41,11 @@ function App(){
                     <Route
                         path="/login"
                         element={<Login />}
+                    />
+
+                    <Route
+                        path="/forgot-password"
+                        element={<ForgotPassword />}
                     />
 
                     <Route
@@ -88,10 +93,7 @@ function App(){
                         element={<JobPosts />}
                     />
 
-                    <Route
-                        path="/video-evaluator"
-                        element={<VideoEvaluator />}
-                    />
+
 
                     <Route
                         path="/mcq-leaderboard"

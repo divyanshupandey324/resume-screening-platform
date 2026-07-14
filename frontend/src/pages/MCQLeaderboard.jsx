@@ -29,6 +29,7 @@ export default function MCQLeaderboard() {
     const [timeLimit, setTimeLimit] = useState(30);
     const [password, setPassword] = useState("");
     const [allowedEmails, setAllowedEmails] = useState("");
+    const [sendEmail, setSendEmail] = useState(true);
     const [questions, setQuestions] = useState([
         { question: "", options: ["", "", "", ""], correct_answer: "", marks: 10 }
     ]);
@@ -133,6 +134,7 @@ export default function MCQLeaderboard() {
                 title,
                 time_limit: parseInt(timeLimit),
                 password,
+                send_email: sendEmail,
                 allowed_emails: allowedEmails.split(",").map(e => e.trim().toLowerCase()),
                 questions: questions.map(q => ({
                     ...q,
@@ -242,6 +244,19 @@ export default function MCQLeaderboard() {
                                     style={{ width: "100%", height: "80px", padding: "12px", borderRadius: "8px", background: "#1e293b", color: "white", border: "1px solid #334155", fontFamily: "inherit" }}
                                     required
                                 />
+                            </div>
+
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "5px" }}>
+                                <input 
+                                    type="checkbox" 
+                                    id="sendEmail"
+                                    checked={sendEmail} 
+                                    onChange={e => setSendEmail(e.target.checked)} 
+                                    style={{ cursor: "pointer", width: "auto" }}
+                                />
+                                <label htmlFor="sendEmail" style={{ fontSize: "0.85rem", color: "#cbd5e1", cursor: "pointer", fontWeight: "600" }}>
+                                    📧 Send invitation credentials email to candidates
+                                </label>
                             </div>
 
                             {/* Dynamic Questions Builder */}

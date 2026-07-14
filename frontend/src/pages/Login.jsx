@@ -85,11 +85,18 @@ export default function Login() {
                     </button>
                 </div>
 
-                <div style={{ textAlign: "center", marginTop: "20px" }}>
-                    <span style={{ color: "#94a3b8", fontSize: "0.9rem" }}>Don't have an account? </span>
-                    <span onClick={() => navigate("/register")} style={{ color: "#6366f1", fontSize: "0.9rem", fontWeight: "600", cursor: "pointer", textDecoration: "underline" }}>
-                        Register
-                    </span>
+                <div style={{ textAlign: "center", marginTop: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <div>
+                        <span style={{ color: "#94a3b8", fontSize: "0.9rem" }}>Don't have an account? </span>
+                        <span onClick={() => navigate("/register")} style={{ color: "#6366f1", fontSize: "0.9rem", fontWeight: "600", cursor: "pointer", textDecoration: "underline" }}>
+                            Register
+                        </span>
+                    </div>
+                    <div>
+                        <span onClick={() => navigate("/forgot-password")} style={{ color: "#a5b4fc", fontSize: "0.9rem", fontWeight: "600", cursor: "pointer", textDecoration: "underline" }}>
+                            Forgot Password?
+                        </span>
+                    </div>
                 </div>
 
                 {message && (

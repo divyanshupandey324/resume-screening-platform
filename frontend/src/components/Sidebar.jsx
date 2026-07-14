@@ -8,7 +8,6 @@ export default function Sidebar() {
         { to: "/recruiter", label: "📊 Dashboard" },
         { to: "/resume-screening", label: "📤 Resume Screening" },
         { to: "/job-posts", label: "💼 Job Posts" },
-        { to: "/video-evaluator", label: "🎥 Video Evaluator" },
         { to: "/mcq-leaderboard", label: "📝 MCQ Leaderboard" },
         { to: "/candidate-db", label: "📂 Candidate Database" },
         { to: "/rankings", label: "🏆 Rankings" },

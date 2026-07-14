@@ -41,8 +41,12 @@ class ATSReport(Base):
     
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
-# Create all tables on startup
-Base.metadata.create_all(bind=engine)
+def init_sql_db():
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("SQL Database tables verified/created successfully.")
+    except Exception as e:
+        print("SQL Database connection/table creation failed:", e)
 
 def get_db():
     db = SessionLocal()

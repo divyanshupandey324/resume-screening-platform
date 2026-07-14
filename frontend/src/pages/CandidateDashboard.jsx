@@ -339,6 +339,19 @@ export default function CandidateDashboard() {
         fetchDsaStats();
     }, [username]);
 
+    const getDefaultComment = (lang) => {
+        const l = (lang || "").toLowerCase();
+        if (l === "python" || l === "bash" || l === "ruby") {
+            return "# Write code here";
+        } else if (l === "sql") {
+            return "-- Write code here";
+        } else if (l === "html" || l === "xml") {
+            return "<!-- Write code here -->";
+        } else {
+            return "// Write code here";
+        }
+    };
+
     const fetchLastSubmission = async (questTitle, lang, templatesFallback = {}) => {
         try {
             const res = await API.get("/candidate/last-submission", {
@@ -347,11 +360,11 @@ export default function CandidateDashboard() {
             if (res.data.exists) {
                 setIdeCode(res.data.code);
             } else {
-                setIdeCode(templatesFallback[lang] || templatesFallback["python"] || "# Write code here");
+                setIdeCode(templatesFallback[lang] || templatesFallback["python"] || getDefaultComment(lang));
             }
         } catch (e) {
             console.error("Failed to fetch last submission:", e);
-            setIdeCode(templatesFallback[lang] || templatesFallback["python"] || "# Write code here");
+            setIdeCode(templatesFallback[lang] || templatesFallback["python"] || getDefaultComment(lang));
         }
     };
 
@@ -494,11 +507,18 @@ export default function CandidateDashboard() {
     // Chatbot query handler
     const handleChatbotQuery = async () => {
         if (!chatQuery.trim()) return;
-        setChatLogs(prev => [...prev, { sender: "user", text: chatQuery }]);
+        const currentQuery = chatQuery;
+        setChatLogs(prev => [...prev, { sender: "user", text: currentQuery }]);
         setChatQuery("");
         setBotLoading(true);
         try {
-            const res = await API.post("/candidate/chatbot", { query: chatQuery });
+            const payload = {
+                query: currentQuery,
+                history: chatLogs.map(log => ({ sender: log.sender, text: log.text })),
+                skills: result ? result.skills : [],
+                resume_text: result ? result.resume_text : ""
+            };
+            const res = await API.post("/candidate/chatbot", payload);
             setChatLogs(prev => [...prev, { sender: "bot", text: res.data.response }]);
         } catch (e) {
             setChatLogs(prev => [...prev, { sender: "bot", text: "Offline." }]);

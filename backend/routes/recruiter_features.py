@@ -8,6 +8,7 @@ from typing import List, Dict, Any
 from services.gemini_service import model
 from database.mongodb import candidate_collection, job_collection, db
 from services.email_service import send_email_notification
+from database.ats_database import SessionLocal, ATSReport
 
 # Declare MongoDB collections
 mcqs_collection = db["mcqs"]
@@ -56,6 +57,7 @@ class MCQCreate(BaseModel):
     time_limit: int
     password: str
     allowed_emails: List[str]
+    send_email: bool = True
 
 class MCQSubmission(BaseModel):
     test_title: str
@@ -122,117 +124,6 @@ async def resume_detect(data: dict):
         
     data_res["is_duplicate"] = existing_duplicates > 0
     return data_res
-
-# --- 2. AI Interview Evaluation (Video & Document Upload) ---
-from fastapi.responses import FileResponse
-import os
-
-@router.post("/interview/evaluate-video")
-async def evaluate_video(
-    file: UploadFile = File(...),
-    candidate_name: str = Form("Candidate"),
-    job_title: str = Form("Software Engineer")
-):
-    os.makedirs("uploads", exist_ok=True)
-    file_path = f"uploads/{file.filename}"
-    with open(file_path, "wb") as buffer:
-        content = await file.read()
-        buffer.write(content)
-        
-    ext = os.path.splitext(file.filename)[1].lower()
-    is_doc = ext in [".pdf", ".docx", ".ppt", ".pptx"]
-    
-    # Read text if it's a doc
-    doc_text_context = ""
-    if is_doc:
-        try:
-            from services.resume_parser import extract_any_document
-            doc_text_context = extract_any_document(file_path)
-        except Exception as e:
-            doc_text_context = f"Failed to extract document text: {str(e)}"
-
-    prompt = f"""
-    Evaluate candidate '{candidate_name}' for the position of '{job_title}'.
-    The candidate uploaded an interview resource file: '{file.filename}'.
-    
-    Resource Type: {'Document Report' if is_doc else 'Mock Interview Video Feed'}
-    Context extracted (if document):
-    {doc_text_context[:2000]}
-    
-    Perform a professional AI assessment of their communication style, fluency, confidence, eye contact, and body language (simulating video analytics or parsing the report data).
-    
-    Return a structured JSON with:
-    - confidence: float (0-100)
-    - voice: float (0-100) (Fluency/Stability)
-    - grammar: float (0-100)
-    - fluency: float (0-100)
-    - speaking_speed: float (0-100, where 80-90 is optimal)
-    - emotion: string (e.g. Enthusiastic, Calm, Professional)
-    - eye_contact: float (0-100)
-    - smile: float (0-100) (or positive indicators)
-    - body_language: float (0-100) (confidence posture)
-    - final_interview_score: float (0-100) (overall interview rating)
-    - coding_assessment: string (e.g. Strong logical thinking, clear structural articulation)
-    - general_feedback: string feedback summary
-    
-    JSON:
-    """
-    try:
-        response = await model.generate_content_async(prompt, generation_config={"response_mime_type": "application/json"})
-        text = response.text.strip()
-        if text.startswith("```"):
-            text = re.sub(r"^```(json)?", "", text)
-            if text.endswith("```"):
-                text = text[:-3]
-            text = text.strip()
-        result = json.loads(text)
-    except Exception:
-        # Default mock evaluation fallback
-        result = {
-            "confidence": 85.0,
-            "voice": 80.0,
-            "grammar": 88.0,
-            "fluency": 85.0,
-            "speaking_speed": 85.0,
-            "emotion": "Professional",
-            "eye_contact": 80.0,
-            "smile": 85.0,
-            "body_language": 82.0,
-            "final_interview_score": 84.5,
-            "coding_assessment": "Coherent reasoning. Demonstrates analytical maturity and structural clarity.",
-            "general_feedback": "Excellent eye contact, well-articulated answers. Structure was logical and grammar was highly professional."
-        }
-    return result
-
-@router.get("/interview/download-report")
-def download_interview_report(
-    candidate_name: str, 
-    job_title: str, 
-    confidence: float, 
-    voice: float, 
-    grammar: float, 
-    fluency: float, 
-    eye_contact: float, 
-    smile: float, 
-    body_language: float, 
-    final_interview_score: float, 
-    coding_assessment: str = "", 
-    general_feedback: str = ""
-):
-    from services.pdf_generator import generate_interview_pdf_report
-    metrics = {
-        "confidence": confidence,
-        "communication": voice, # mapping voice to communication
-        "eye_contact": eye_contact,
-        "fluency": fluency,
-        "body_language": body_language,
-        "overall_score": final_interview_score,
-        "coding_assessment": coding_assessment,
-        "general_feedback": general_feedback,
-        "date_analyzed": datetime.datetime.now().strftime("%Y-%m-%d")
-    }
-    filepath = generate_interview_pdf_report(candidate_name, job_title, metrics)
-    return FileResponse(filepath, media_type="application/pdf", filename=f"{candidate_name.replace(' ', '_')}_interview_report.pdf")
 
 # --- 3. GitHub Analyzer ---
 @router.post("/analyzer/github")
@@ -639,7 +530,9 @@ def create_mcq_test(test: MCQCreate):
             "time_limit": test.time_limit,
             "expiry_time": "48 Hours"
         }
-        send_email_notification("mcq_invite", email, email, details)
+        
+        if test.send_email:
+            send_email_notification("mcq_invite", email, email, details)
         
         notifications_collection.insert_one({
             "recipient_email": email,
@@ -910,3 +803,59 @@ def get_job_applicants(job_id: str):
         cand.setdefault("score", 0)
         applicants.append(cand)
     return applicants
+
+class SendCredentialsPayload(BaseModel):
+    candidate_email: str
+    recipient_emails: str
+
+@router.post("/recruiter/send-candidate-password")
+def send_candidate_password(data: SendCredentialsPayload):
+    cand_email = data.candidate_email.strip()
+    recipients_raw = data.recipient_emails
+    
+    # 1. Find user in database by email or username
+    user = db["users"].find_one({"email": cand_email})
+    if not user:
+        user = db["users"].find_one({"username": cand_email})
+        
+    if not user:
+        return {"success": False, "message": f"No registered candidate found with email/username: {cand_email}"}
+        
+    plain_password = user.get("plain_password")
+    if not plain_password:
+        return {"success": False, "message": "Candidate registered prior to this feature. No plain password available."}
+        
+    # 2. Parse recipient list
+    recipient_list = [r.strip() for r in recipients_raw.split(",") if r.strip()]
+    if not recipient_list:
+        return {"success": False, "message": "No valid recipient email addresses provided."}
+        
+    from services.email_service import _send_smtp_email
+    
+    subject = f"Candidate Credentials for {user.get('username')}"
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; padding: 20px; color: #1e293b; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <h2 style="color: #6366f1; border-bottom: 2px solid #6366f1; padding-bottom: 8px;">Candidate Credentials Information</h2>
+        <p>Dear Administrator / Interviewer,</p>
+        <p>The login credentials for candidate <strong>{user.get('username')}</strong> are requested. Details below:</p>
+        <div style="background-color: #f1f5f9; padding: 15px; border-radius: 6px; margin: 15px 0; font-family: monospace;">
+            <strong>Username/Email:</strong> {user.get('username')} ({user.get('email', 'N/A')})<br/>
+            <strong>Password:</strong> {plain_password}
+        </div>
+        <p>Please keep this information secure.</p>
+    </div>
+    """
+    
+    sent_count = 0
+    failures = []
+    for recipient in recipient_list:
+        status, err = _send_smtp_email(recipient, subject, html_content)
+        if status == "Sent":
+            sent_count += 1
+        else:
+            failures.append(f"{recipient}: {err}")
+            
+    if sent_count > 0:
+        return {"success": True, "message": f"Successfully sent credentials to {sent_count} email(s).", "failures": failures}
+    else:
+        return {"success": False, "message": f"Failed to send emails. Details: {', '.join(failures)}"}

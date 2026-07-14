@@ -42,72 +42,58 @@ ROLE_SKILLS_MAPPING = {
 }
 
 def calculate_score(candidate, job_title="General Software Engineer", required_skills=None, job_description="General software development role.") -> float:
-    # Deterministic scoring for candidate application payload
-    if required_skills is None:
-        required_skills = ROLE_SKILLS_MAPPING.get(job_title, ["python", "sql", "machine learning"])
+    # Adapt Pydantic Candidate model or dict to extracted_details structure
+    extracted_details = {
+        "name": getattr(candidate, "name", "Unknown Candidate"),
+        "email": getattr(candidate, "email", ""),
+        "phone": getattr(candidate, "phone", "Not Found"),
+        "tenth_percentage": getattr(candidate, "tenth_percentage", 0.0),
+        "twelfth_percentage": getattr(candidate, "twelfth_percentage", 0.0),
+        "graduation_cgpa": getattr(candidate, "graduation_cgpa", 0.0),
+        "experience_years": getattr(candidate, "experience_years", 0.0),
+        "skills": getattr(candidate, "skills", []),
+        "projects": getattr(candidate, "projects", []),
+        "certificates": getattr(candidate, "certificates", []),
+        "achievements": getattr(candidate, "achievements", []),
+        "education_quality_score": 80.0 if getattr(candidate, "graduation_cgpa", 0.0) > 0 else 50.0,
+        "experience_relevance_score": 80.0 if getattr(candidate, "experience_years", 0.0) > 0 else 50.0,
+        "projects_quality_score": 80.0 if getattr(candidate, "projects", []) else 50.0,
+        "certifications_relevance_score": 80.0 if getattr(candidate, "certificates", []) else 50.0,
+        "grammar_score": 90.0,
+        "formatting_score": 90.0
+    }
     
-    # 1. Skills Match (30%)
-    matched_skills = len(set(required_skills) & set([s.lower().strip() for s in candidate.skills]))
-    skills_ratio = matched_skills / len(required_skills) if required_skills else 1.0
-    skills_part = min(30.0, skills_ratio * 30.0)
-
-    # 2. Experience (20%)
-    exp_years = float(candidate.experience_years)
-    exp_part = min(20.0, (exp_years / 2.0) * 20.0)
-
-    # 3. Projects (15%)
-    num_projects = len(candidate.projects)
-    if num_projects >= 3:
-        proj_part = 15.0
-    elif num_projects == 2:
-        proj_part = 10.0
-    elif num_projects == 1:
-        proj_part = 5.0
-    else:
-        proj_part = 0.0
-
-    # 4. Education (15%)
-    grad = float(candidate.graduation_cgpa or 0.0)
-    tenth = float(candidate.tenth_percentage or 0.0)
-    twelfth = float(candidate.twelfth_percentage or 0.0)
-    edu_part = min(15.0, ((grad / 10.0) * 9.0) + ((tenth / 100.0) * 3.0) + ((twelfth / 100.0) * 3.0))
-
-    # 5. Certificates (10%)
-    num_certs = len(candidate.certificates or [])
-    if num_certs >= 2:
-        cert_part = 10.0
-    elif num_certs == 1:
-        cert_part = 6.0
-    else:
-        cert_part = 0.0
-
-    # 6. Completeness (10%)
-    comp_points = 0.0
-    if candidate.name and candidate.name != "Unknown Candidate":
-        comp_points += 2.0
-    if candidate.email:
-        comp_points += 2.0
-    if candidate.skills:
-        comp_points += 2.0
-    if exp_years > 0:
-        comp_points += 2.0
-    if num_projects > 0 or num_certs > 0:
-        comp_points += 2.0
-    completeness_part = comp_points
+    job_doc = {
+        "title": job_title,
+        "required_skills": required_skills if required_skills is not None else ROLE_SKILLS_MAPPING.get(job_title, ["python", "sql", "machine learning"]),
+        "description": job_description,
+        "minimum_experience": 1.0
+    }
     
-    overall = skills_part + exp_part + proj_part + edu_part + cert_part + completeness_part
-    return round(min(100.0, max(0.0, overall)), 2)
+    breakdown = calculate_ats_breakdown(
+        candidate=None,
+        job_doc=job_doc,
+        resume_text=f"Skills: {', '.join(extracted_details['skills'])} Projects: {', '.join(extracted_details['projects'])}",
+        extracted_details=extracted_details
+    )
+    return breakdown["overall_score"]
 
 def calculate_ats_breakdown(candidate, job_doc, resume_text, extracted_details) -> dict:
     required_skills = [s.lower().strip() for s in job_doc.get("required_skills", [])]
-    preferred_skills = [s.lower().strip() for s in job_doc.get("preferred_skills", [])]
     candidate_skills = [s.lower().strip() for s in extracted_details.get("skills", [])]
     
     deductions = []
 
     # 1. Skills Match (25%)
-    matched_req = list(set(required_skills) & set(candidate_skills))
-    missing_skills = list(set(required_skills) - set(candidate_skills))
+    # Support robust substring and case-insensitive matching
+    matched_req = []
+    for req in required_skills:
+        for cand in candidate_skills:
+            if req in cand or cand in req:
+                matched_req.append(req)
+                break
+    matched_req = list(set(matched_req))
+    missing_skills = list(set(required_skills) - set(matched_req))
     
     if required_skills:
         skills_score = round(25.0 * (len(matched_req) / len(required_skills)), 2)
@@ -126,84 +112,55 @@ def calculate_ats_breakdown(candidate, job_doc, resume_text, extracted_details) 
     if min_exp <= 0:
         min_exp = 1.0
     cand_exp = float(extracted_details.get("experience_years", 0.0))
-    if cand_exp >= min_exp:
-        experience_score = 15.0
-    else:
-        experience_score = round(15.0 * (cand_exp / min_exp), 2)
+    exp_ratio = min(1.0, cand_exp / min_exp)
+    
+    # Combine quantitative experience years with qualitative relevance score from LLM
+    exp_relevance = float(extracted_details.get("experience_relevance_score", 70.0))
+    weighted_exp_score = (exp_relevance * 0.6) + (exp_ratio * 100.0 * 0.4)
+    experience_score = round((weighted_exp_score / 100.0) * 15.0, 2)
         
     if experience_score < 15.0:
         deductions.append({
             "metric": "Experience",
             "points": round(15.0 - experience_score, 2),
-            "reason": f"Candidate experience ({cand_exp} Yrs) is below target minimum ({min_exp} Yrs)."
+            "reason": f"Candidate experience ({cand_exp} Yrs) is below target minimum ({min_exp} Yrs) or lacks relevant work history alignment."
         })
 
     # 3. Projects (10%)
-    num_projects = len(extracted_details.get("projects", []))
-    if num_projects >= 3:
-        projects_score = 10.0
-    elif num_projects == 2:
-        projects_score = 7.0
-    elif num_projects == 1:
-        projects_score = 4.0
-    else:
-        projects_score = 0.0
+    projects_quality = float(extracted_details.get("projects_quality_score", 70.0))
+    projects_score = round((projects_quality / 100.0) * 10.0, 2)
         
     if projects_score < 10.0:
         deductions.append({
             "metric": "Projects",
             "points": round(10.0 - projects_score, 2),
-            "reason": f"Only {num_projects} project(s) listed. We recommend listing at least 3 distinct projects."
+            "reason": "Technical depth, impact, or documentation of candidate projects can be improved."
         })
 
     # 4. Education (10%)
+    # Combine grades/CGPA with degree/institution quality score from LLM
     grad_cgpa = float(extracted_details.get("graduation_cgpa", 0.0))
-    tenth_pct = float(extracted_details.get("tenth_percentage", 0.0))
-    twelfth_pct = float(extracted_details.get("twelfth_percentage", 0.0))
-    
-    grad_score = round((grad_cgpa / 10.0) * 6.0, 2)
-    twelfth_score = round((twelfth_pct / 100.0) * 2.0, 2)
-    tenth_score = round((tenth_pct / 100.0) * 2.0, 2)
-    
-    education_score = round(min(10.0, grad_score + twelfth_score + tenth_score), 2)
+    cgpa_ratio = min(1.0, grad_cgpa / 10.0) if grad_cgpa > 0 else 0.5
+    edu_quality = float(extracted_details.get("education_quality_score", 70.0))
+    weighted_edu_score = (edu_quality * 0.7) + (cgpa_ratio * 100.0 * 0.3)
+    education_score = round((weighted_edu_score / 100.0) * 10.0, 2)
     
     if education_score < 10.0:
-        edu_reasons = []
-        if grad_cgpa == 0.0:
-            edu_reasons.append("Graduation CGPA is not specified in the resume")
-        elif grad_cgpa < 8.0:
-            edu_reasons.append(f"Graduation CGPA ({grad_cgpa}) is below the recommended 8.0")
-            
-        if tenth_pct == 0.0:
-            edu_reasons.append("10th class percentage is not specified in the resume")
-        elif tenth_pct < 80.0:
-            edu_reasons.append(f"10th marks ({tenth_pct}%) are below the recommended 80%")
-            
-        if twelfth_pct == 0.0:
-            edu_reasons.append("12th class percentage is not specified in the resume")
-        elif twelfth_pct < 80.0:
-            edu_reasons.append(f"12th marks ({twelfth_pct}%) are below the recommended 80%")
-        
         deductions.append({
             "metric": "Education",
             "points": round(10.0 - education_score, 2),
-            "reason": ", ".join(edu_reasons) if edu_reasons else "Academic score metrics are below optimal levels."
+            "reason": f"Academic credentials or field of study relevance score is evaluated as {edu_quality}%."
         })
 
     # 5. Certificates (5%)
-    num_certs = len(extracted_details.get("certificates", []))
-    if num_certs >= 2:
-        certifications_score = 5.0
-    elif num_certs == 1:
-        certifications_score = 3.0
-    else:
-        certifications_score = 0.0
+    cert_relevance = float(extracted_details.get("certifications_relevance_score", 70.0))
+    certifications_score = round((cert_relevance / 100.0) * 5.0, 2)
         
     if certifications_score < 5.0:
         deductions.append({
             "metric": "Certificates",
             "points": round(5.0 - certifications_score, 2),
-            "reason": f"Only {num_certs} certificate(s) listed (minimum 2 recommended)."
+            "reason": "Relevance or count of certifications is below optimal level for target role."
         })
 
     # 6. Resume Structure (5%)
@@ -263,15 +220,16 @@ def calculate_ats_breakdown(candidate, job_doc, resume_text, extracted_details) 
 
     # 10. Completeness (5%)
     comp_points = 0.0
-    if extracted_details.get("name") and extracted_details["name"] != "Unknown Candidate":
+    # Programmatic verification of key content fields
+    if extracted_details.get("name") and extracted_details["name"] not in ["Unknown Candidate", "Not Found"]:
         comp_points += 1.0
-    if extracted_details.get("email"):
+    if extracted_details.get("email") and extracted_details["email"] not in ["", "Not Found"]:
         comp_points += 1.0
-    if extracted_details.get("skills"):
+    if extracted_details.get("phone") and extracted_details["phone"] not in ["", "Not Found"]:
         comp_points += 1.0
-    if extracted_details.get("experience_years", 0.0) > 0.0:
+    if candidate_skills:
         comp_points += 1.0
-    if num_projects > 0 or len(extracted_details.get("certificates", [])) > 0:
+    if extracted_details.get("experience", []) or extracted_details.get("projects", []):
         comp_points += 1.0
     completeness_score = round(comp_points, 2)
     
@@ -300,6 +258,8 @@ def calculate_ats_breakdown(candidate, job_doc, resume_text, extracted_details) 
 
     # Build detailed lists for pros, cons, and recommendations
     good_points = extracted_details.get("strengths", [])
+    if not isinstance(good_points, list):
+        good_points = [good_points] if good_points else []
     if len(matched_req) > 0:
         good_points.append(f"Successfully matched {len(matched_req)} required skill(s) for the target role.")
     if cand_exp >= min_exp:
@@ -308,6 +268,8 @@ def calculate_ats_breakdown(candidate, job_doc, resume_text, extracted_details) 
         good_points.append("Strong academic record (Graduation CGPA above 8.0/10).")
 
     weak_points = extracted_details.get("weaknesses", [])
+    if not isinstance(weak_points, list):
+        weak_points = [weak_points] if weak_points else []
     if missing_skills:
         weak_points.append(f"Missing key required skills: {', '.join(missing_skills)}")
     if cand_exp < min_exp:

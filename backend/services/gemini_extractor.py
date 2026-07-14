@@ -4,28 +4,45 @@ from services.gemini_service import model
 
 async def extract_details_and_feedback(resume_text: str) -> dict:
     prompt = f"""
-    You are an expert AI recruiter and writing style/linguistic analyst. Analyze the following resume text and extract details as a structured JSON object.
+    You are an expert AI recruiter and resume parser. Analyze the following resume text and extract candidate details as a structured JSON object.
     
     CRITICAL RELIABILITY AND ACCURACY DIRECTIVES:
     1. Extract ONLY facts that are directly and explicitly stated in the resume text. Do NOT assume, estimate, or make up any details (like CGPA, scores, skills, experiences, projects, or dates) that are not explicitly written.
-    2. If the candidate's 10th class percentage, 12th class percentage, or graduation CGPA is not explicitly written in the resume text, you MUST return 0.0 for that field. Do NOT guess or default to any passing or high grades.
+    2. If a specific field or section is not found in the resume, you must return null or "Not Found" for strings, or an empty list/null for arrays. Do NOT guess, assume, or output generic/placeholder values.
     3. Do NOT make assumptions about technology versions or candidate roles if they are not explicitly present.
-    4. Grammar suggestions, formatting issues, and keyword recommendations MUST be highly specific to the actual text of this resume. Do NOT provide generic suggestions or list boilerplate formatting/grammar tips that are not applicable to the text.
-    5. Avoid any generic AI hallucinated commentary. The feedback summary must only state findings determined directly from the uploaded CV.
     
     Fields to extract:
-    - name: Full name (string). If not found, use "Unknown Candidate".
-    - email: Email address (string). If not found, use "".
+    - name: Full name (string). If not found, return null or "Not Found".
+    - email: Email address (string). If not found, return null or "Not Found".
+    - phone: Contact phone number (string). If not found, return null or "Not Found".
     - tenth_percentage: 10th class percentage/score (float, 0.0 to 100.0, default 0.0). Only extract if explicitly stated in text.
     - twelfth_percentage: 12th class percentage/score (float, 0.0 to 100.0, default 0.0). Only extract if explicitly stated in text.
     - graduation_cgpa: Graduation CGPA (float, 0.0 to 10.0, default 0.0). If percentage like 80% is given in education, convert to CGPA (e.g. 8.0). Only extract if explicitly stated in text.
     - experience_years: Total years of professional experience as a float. Look for job durations. If none or not clearly stated, return 0.0.
     - skills: List of programming languages, frameworks, developer tools, database engines, etc. (list of strings).
-    - projects: List of names or descriptions of projects mentioned (list of strings).
-    - certificates: List of certifications (list of strings).
-    - achievements: List of accomplishments (list of strings).
-    - strengths: List of strengths/core competencies (list of strings).
-    - weaknesses: List of weakness areas (list of strings).
+    - education: List of objects representing education history. Each object should have:
+        - degree: Degree name (e.g. B.Tech, Master of Science) (string)
+        - field_of_study: Major/Specialization (string)
+        - institution: University/College name (string)
+        - year_of_completion: Graduation year (string or integer)
+        - score: Score/GPA/CGPA/Percentage if explicitly mentioned (string)
+    - experience: List of objects representing professional work experience. Each object should have:
+        - job_title: Job title (string)
+        - company: Company name (string)
+        - duration: Duration of employment (e.g. "June 2021 - Present") (string)
+        - responsibilities: List of key responsibilities/contributions (list of strings)
+    - projects: List of objects representing projects. Each object should have:
+        - name: Project name (string)
+        - description: Project description (string)
+        - technologies_used: List of technologies used (list of strings)
+    - certificates: List of certifications (list of strings). If not found, return empty list.
+    - achievements: List of accomplishments/achievements (list of strings). If not found, return empty list.
+    
+    Qualitative Assessment Scores:
+    - education_quality_score: Float between 0.0 and 100.0 evaluating the relevance and calibre of education history.
+    - experience_relevance_score: Float between 0.0 and 100.0 evaluating the relevance and alignment of the candidate's work history for standard engineering/technology positions.
+    - projects_quality_score: Float between 0.0 and 100.0 evaluating the technical depth and professional relevance of their projects.
+    - certifications_relevance_score: Float between 0.0 and 100.0 evaluating the credibility and relevance of their certifications.
     
     ATS Scoring Indicators:
     - grammar_score: Float between 0.0 and 100.0 reflecting grammatical accuracy and spelling.
@@ -71,17 +88,22 @@ async def extract_details_and_feedback(resume_text: str) -> dict:
         
         # Ensure default keys
         data.setdefault("name", "Unknown Candidate")
-        data.setdefault("email", "")
+        data.setdefault("email", "Not Found")
+        data.setdefault("phone", "Not Found")
         data.setdefault("tenth_percentage", 0.0)
         data.setdefault("twelfth_percentage", 0.0)
         data.setdefault("graduation_cgpa", 0.0)
         data.setdefault("experience_years", 0.0)
         data.setdefault("skills", [])
+        data.setdefault("education", [])
+        data.setdefault("experience", [])
         data.setdefault("projects", [])
         data.setdefault("certificates", [])
         data.setdefault("achievements", [])
-        data.setdefault("strengths", [])
-        data.setdefault("weaknesses", [])
+        data.setdefault("education_quality_score", 70.0)
+        data.setdefault("experience_relevance_score", 70.0)
+        data.setdefault("projects_quality_score", 70.0)
+        data.setdefault("certifications_relevance_score", 70.0)
         data.setdefault("grammar_score", 90.0)
         data.setdefault("grammar_suggestions", [])
         data.setdefault("formatting_score", 90.0)
@@ -99,17 +121,22 @@ async def extract_details_and_feedback(resume_text: str) -> dict:
         print("Error parsing Gemini JSON output:", e)
         return {
             "name": "Unknown Candidate",
-            "email": "",
+            "email": "Not Found",
+            "phone": "Not Found",
             "tenth_percentage": 0.0,
             "twelfth_percentage": 0.0,
             "graduation_cgpa": 0.0,
             "experience_years": 0.0,
             "skills": [],
+            "education": [],
+            "experience": [],
             "projects": [],
             "certificates": [],
             "achievements": [],
-            "strengths": [],
-            "weaknesses": [],
+            "education_quality_score": 50.0,
+            "experience_relevance_score": 50.0,
+            "projects_quality_score": 50.0,
+            "certifications_relevance_score": 50.0,
             "grammar_score": 80.0,
             "grammar_suggestions": ["Ensure active verbs are used throughout."],
             "formatting_score": 80.0,

@@ -13,9 +13,6 @@ from routes.report_routes import (
 from routes.recruiter_ai_routes import (
     router as recruiter_ai_router
 )
-from routes.interview_routes import (
-    router as interview_router
-)
 from routes.auth_routes import (
     router as auth_router
 )
@@ -63,8 +60,12 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    # Run heavy database seeding and default job clearing in background threads
+    # Run heavy database seeding, initialization and default job clearing in background threads
     # to avoid blocking server start and request processing
+    from database.connection import init_db
+    from database.ats_database import init_sql_db
+    asyncio.create_task(asyncio.to_thread(init_db))
+    asyncio.create_task(asyncio.to_thread(init_sql_db))
     asyncio.create_task(asyncio.to_thread(run_db_seeding))
     asyncio.create_task(asyncio.to_thread(clear_default_jobs))
 
@@ -96,9 +97,6 @@ app.include_router(
 )
 app.include_router(
     auth_router
-)
-app.include_router(
-    interview_router
 )
 app.include_router(
     recruiter_ai_router

@@ -17,10 +17,15 @@ class CodeExecution(BaseModel):
     username: str = ""
     is_submission: bool = False
 
+class ChatMessage(BaseModel):
+    sender: str
+    text: str
+
 class CandidateQuery(BaseModel):
     query: str
-    resume_text: str = ""
-    skills: list = []
+    resume_text: Optional[str] = ""
+    skills: Optional[list] = []
+    history: Optional[List[ChatMessage]] = []
 
 class PracticeQuery(BaseModel):
     job_id: str = ""
@@ -40,20 +45,30 @@ class BookmarkPayload(BaseModel):
 # --- 1. Candidate Career Coach Chatbot ---
 @router.post("/candidate/chatbot")
 async def candidate_chatbot(query_data: CandidateQuery):
-    query = query_data.query.lower()
+    history_context = ""
+    if query_data.history:
+        history_context = "\n".join([f"{msg.sender.upper()}: {msg.text}" for msg in query_data.history])
     
     prompt = f"""
     You are an expert AI Career Coach helping a candidate.
-    Candidate Skills: {', '.join(query_data.skills)}
-    Candidate Resume Details: {query_data.resume_text[:1000]}
     
-    The candidate asks: "{query_data.query}"
+    Candidate Skills: {', '.join(query_data.skills) if query_data.skills else "No specific skills uploaded yet"}
+    Candidate Resume Details: {query_data.resume_text[:2000] if query_data.resume_text else "No resume uploaded yet"}
     
-    If they ask about "Improve Resume", suggest formatting and gaps.
-    If "Recommend Jobs", search profiles.
-    If "Learning Resources", provide Coursera, Udemy, LeetCode, HackerRank, or YouTube links (e.g., https://www.youtube.com/playlist?list=PLBlnK6fEyqRgp46KUv4ZY69yXg28ymyZr for C++ or appropriate programming crash courses/playlists).
-    If "Interview Tips", give actionable metrics.
-    If "Skill Gap", highlight their technology shortcomings.
+    Conversation History:
+    {history_context}
+    
+    Current User Message: "{query_data.query}"
+    
+    Based on the candidate's skills, resume details, and conversation history, respond to the current user message in a helpful, friendly, and context-aware manner.
+    
+    Guidelines:
+    1. If they ask about improving their resume ("Improve Resume"), review their resume details and suggest specific enhancements, quantifiable metrics, and structural adjustments.
+    2. If they ask to recommend jobs ("Recommend Jobs"), list relevant roles matching their skills and experience.
+    3. If they ask for learning resources ("Learning Resources"), provide links to popular platforms like Coursera, Udemy, LeetCode, or YouTube playlists relevant to their skill gaps.
+    4. If they ask for interview tips ("Interview Tips"), provide specific preparation suggestions.
+    5. If they ask about skill gaps ("Skill Gap"), identify what key skills might be missing based on standard roles and recommend technologies to learn.
+    6. Ensure the response directly answers the user's message, is not a repetitive template response, and flows naturally from the conversation history.
     
     Return a structured JSON with:
     - response: A friendly, formatted markdown string answering their question. Make sure to provide real YouTube or Coursera learning links if they ask for resources.
@@ -70,16 +85,32 @@ async def candidate_chatbot(query_data: CandidateQuery):
             text = text.strip()
         return json.loads(text)
     except Exception:
-        # Default coaching responses
-        return {
-            "response": """### Career Advice
+        # Dynamic fallback responses matching the query category
+        q_lower = query_data.query.lower()
+        if "resume" in q_lower:
+            fallback_text = """### Resume Advice
 Based on your profile, here are some recommendations:
-- **Resume Improvement**: List quantifiable achievements for each project (e.g., "Improved response time by 30%").
-- **Learning Resources**: 
-  - [Coursera Data Structures](https://www.coursera.org/specializations/data-structures-algorithms)
-  - [LeetCode Practice](https://leetcode.com/)
-  - [YouTube C++ Playlist](https://www.youtube.com/watch?v=vLnPwxZdW4Y)
-- **Interview Tip**: Always explain your time complexity before writing the code!"""
+- **Quantify Impact**: List accomplishments (e.g., "Optimized DB query latency by 40%").
+- **Clarity**: Keep it structured under standard headings: Education, Experience, Projects, Certifications."""
+        elif "job" in q_lower:
+            fallback_text = """### Recommended Positions
+Based on your uploaded skills, we recommend applying for:
+- **Software Engineer / Fullstack Developer** roles.
+- Check out [LinkedIn Jobs](https://www.linkedin.com/jobs/) or the Browse Jobs tab on this dashboard."""
+        elif "learn" in q_lower or "resource" in q_lower:
+            fallback_text = """### Curated Learning Path
+- **Data Structures & Algorithms**: [Coursera specialization](https://www.coursera.org/specializations/data-structures-algorithms)
+- **Practice DSA problems**: [LeetCode](https://leetcode.com/)
+- **Programming Tutorials**: [YouTube Programming crash courses](https://www.youtube.com/watch?v=vLnPwxZdW4Y)"""
+        elif "tip" in q_lower or "interview" in q_lower:
+            fallback_text = """### Interview Preparation Tips
+- **Speak Out Loud**: Always voice your thoughts and explain time complexities before writing code.
+- **STAR Method**: Structure behavioral answers around Situation, Task, Action, and Result."""
+        else:
+            fallback_text = f"""### AI Career Coach
+I understand you asked about "{query_data.query}". I recommend review your profile, expanding your skills checklist, and practicing mock coding tests from the Candidate Dashboard to boost your ATS match scores."""
+        return {
+            "response": fallback_text
         }
 
 def check_language_mismatch(language: str, code: str) -> str:

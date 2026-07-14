@@ -165,25 +165,6 @@ export default function RecruiterDashboard() {
                             </div>
                         </div>
 
-                        {/* Latest Notifications Feed */}
-                        <div className="glass-card" style={{ padding: "25px", background: "rgba(255,255,255,0.02)" }}>
-                            <h2 style={{ fontSize: "1.3rem", color: "#cbd5e1", marginBottom: "20px", marginTop: 0 }}>Latest Dispatch Notifications</h2>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-                                {notifications.length === 0 ? (
-                                    <div style={{ color: "#64748b", fontSize: "0.9rem" }}>No candidate alerts dispatched.</div>
-                                ) : (
-                                    notifications.map(notif => (
-                                        <div key={notif._id} style={{ background: "rgba(255,255,255,0.01)", padding: "12px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.03)" }}>
-                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                                <strong style={{ fontSize: "0.85rem", color: "#a5b4fc" }}>{notif.title}</strong>
-                                                <span style={{ fontSize: "0.75rem", color: "#64748b" }}>To: {notif.recipient_email}</span>
-                                            </div>
-                                            <p style={{ margin: "5px 0 0 0", fontSize: "0.8rem", color: "#cbd5e1", lineHeight: "1.4" }}>{notif.message}</p>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
 
                     </div>
 

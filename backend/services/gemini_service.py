@@ -27,13 +27,13 @@ class FallbackModelWrapper:
         if not val:
             return []
         keys = [k.strip() for k in val.split(",") if k.strip()]
-        # Filter out keys that do not start with AIzaSy (invalid format for API key)
-        valid_keys = [k for k in keys if k.startswith("AIzaSy")]
+        # Filter out keys that do not start with AIzaSy or AQ. (invalid format for API key)
+        valid_keys = [k for k in keys if k.startswith("AIzaSy") or k.startswith("AQ.")]
         if len(valid_keys) < len(keys):
-            logger.warning(f"Filtered out {len(keys) - len(valid_keys)} invalid Gemini API key format(s) (must start with 'AIzaSy').")
+            logger.warning(f"Filtered out {len(keys) - len(valid_keys)} invalid Gemini API key format(s) (must start with 'AIzaSy' or 'AQ.').")
         return valid_keys
 
-    def _call_openai_api(self, url, api_key, model_name, prompt, generation_config=None, extra_headers=None):
+    def _call_openai_api(self, url, api_key, model_name, prompt, generation_config=None, extra_headers=None, timeout=8):
         headers = {
             "Content-Type": "application/json"
         }
@@ -58,7 +58,7 @@ class FallbackModelWrapper:
             method="POST"
         )
         try:
-            with urllib.request.urlopen(req, timeout=30) as response:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 text = res_data["choices"][0]["message"]["content"]
                 return text
@@ -180,19 +180,23 @@ class FallbackModelWrapper:
         # 6. Ollama Local
         ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
         ollama_model = os.getenv("OLLAMA_MODEL", "llama3")
-        try:
-            logger.info(f"Attempting local Ollama with model {ollama_model} at {ollama_host}")
-            text = self._call_openai_api(
-                f"{ollama_host}/v1/chat/completions",
-                None,
-                ollama_model,
-                prompt,
-                generation_config
-            )
-            return LLMResponse(text)
-        except Exception as e:
-            err_msg = f"Ollama local failed: {e}"
-            errors.append(err_msg)
+        if os.getenv("OLLAMA_ENABLED", "false").lower() == "true":
+            try:
+                logger.info(f"Attempting local Ollama with model {ollama_model} at {ollama_host}")
+                text = self._call_openai_api(
+                    f"{ollama_host}/v1/chat/completions",
+                    None,
+                    ollama_model,
+                    prompt,
+                    generation_config,
+                    timeout=3
+                )
+                return LLMResponse(text)
+            except Exception as e:
+                err_msg = f"Ollama local failed: {e}"
+                errors.append(err_msg)
+        else:
+            errors.append("Ollama local bypassed (OLLAMA_ENABLED is not set to true).")
 
         raise RuntimeError(f"All LLM providers and keys failed. Details: {'; '.join(errors)}")
 

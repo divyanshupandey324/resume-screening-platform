@@ -212,11 +212,10 @@ def _send_smtp_email(recipient_email: str, subject: str, html_content: str) -> t
         return "Failed", str(e)
 
 def send_email_notification(template_type: str, recipient_email: str, recipient_name: str, details: dict) -> dict:
-    """
-    Dummy/No-op email dispatch as email-sending is disabled.
-    Writes the attempt to MongoDB with status 'Disabled'.
-    """
     subject, html_content = get_html_template(template_type, recipient_name, details)
+    
+    # Trigger SMTP email dispatch
+    status, error_msg = _send_smtp_email(recipient_email, subject, html_content)
     
     log_doc = {
         "recipient_email": recipient_email,
@@ -225,8 +224,8 @@ def send_email_notification(template_type: str, recipient_email: str, recipient_
         "body_html": html_content,
         "template_type": template_type,
         "details": details,
-        "status": "Disabled",
-        "error_msg": "Email sending has been disabled globally by system administrator.",
+        "status": status,
+        "error_msg": error_msg,
         "created_at": datetime.datetime.utcnow().isoformat()
     }
     
@@ -234,7 +233,7 @@ def send_email_notification(template_type: str, recipient_email: str, recipient_
         inserted = email_collection.insert_one(log_doc)
         log_doc["_id"] = str(inserted.inserted_id)
     except Exception as e:
-        logger.error(f"Failed to log disabled email template to DB: {e}")
+        logger.error(f"Failed to log email template to DB: {e}")
         
     return log_doc
 
