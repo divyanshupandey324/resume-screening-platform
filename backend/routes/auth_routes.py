@@ -131,7 +131,7 @@ def verify_otp(data: VerifyOtpPayload):
     created_at = entry.get("created_at")
     if created_at:
         now = datetime.datetime.utcnow()
-        if (now - created_at).total_seconds() > 600:
+        if (now - created_at).total_seconds() > 1800:
             db["otps"].delete_many({"email": email})
             return {"success": False, "message": "OTP verification code has expired."}
             

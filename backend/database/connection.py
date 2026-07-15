@@ -63,7 +63,11 @@ def init_db():
         db["mcqs"].create_index("password")
         db["coding_questions"].create_index([("category", 1), ("difficulty", 1)])
         db["otps"].create_index("email", unique=True)
-        db["otps"].create_index("created_at", expireAfterSeconds=600)
+        try:
+            db["otps"].drop_index("created_at_1")
+        except Exception:
+            pass
+        db["otps"].create_index("created_at", expireAfterSeconds=1800)
         
         print("Standard database indexes created successfully")
     except Exception as e:
