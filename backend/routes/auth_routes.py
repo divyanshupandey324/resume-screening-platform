@@ -116,7 +116,7 @@ def send_otp(data: SendOtpPayload):
         print(f"\n[DEV FALLBACK] SMTP Dispatch failed: {err}. Generated OTP for {email}: {otp}\n")
         return {
             "success": True,
-            "message": f"Verification code sent (SMTP config bypassed. Dev OTP: {otp})"
+            "message": f"Verification code sent (SMTP config bypassed. Error: {err}. Dev OTP: {otp})"
         }
 
 @router.post("/auth/forgot-password/verify-otp")
