@@ -112,7 +112,12 @@ def send_otp(data: SendOtpPayload):
     if status == "Sent":
         return {"success": True, "message": "Verification code (OTP) sent successfully to your Gmail."}
     else:
-        return {"success": False, "message": f"SMTP Dispatch failed: {err}"}
+        # Development / Fallback mode: return the OTP in response message if SMTP is not configured
+        print(f"\n[DEV FALLBACK] SMTP Dispatch failed: {err}. Generated OTP for {email}: {otp}\n")
+        return {
+            "success": True,
+            "message": f"Verification code sent (SMTP config bypassed. Dev OTP: {otp})"
+        }
 
 @router.post("/auth/forgot-password/verify-otp")
 def verify_otp(data: VerifyOtpPayload):

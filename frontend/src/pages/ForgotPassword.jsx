@@ -23,7 +23,7 @@ export default function ForgotPassword() {
         try {
             const res = await API.post("/auth/forgot-password/send-otp", { email });
             if (res.data.success) {
-                setMessage("Verification code sent to your email.");
+                setMessage(res.data.message || "Verification code sent to your email.");
                 setStep(2);
             } else {
                 setMessage(res.data.message || "Failed to send verification code.");
