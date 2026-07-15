@@ -127,16 +127,16 @@ def get_html_template(template_type: str, recipient_name: str, details: dict) ->
         </div>
         """
     elif template_type == "otp":
-        subject = details.get("subject", "Verification Code")
+        subject = "Verification Code: " + str(details.get('otp'))
         body = f"""
-        <div style="{container_styles}">
-            <h2 style="{title_styles}">Verification Code</h2>
+        <div style="max-width: 500px; margin: 20px auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: sans-serif; color: #1e293b; background-color: #ffffff; line-height: 1.6;">
+            <h2 style="color: #4f46e5; margin-bottom: 20px; font-size: 20px;">Verification Code</h2>
             <p>Dear {recipient_name},</p>
             <p>You requested to reset your password. Use the following verification code (OTP) to complete the reset process:</p>
-            <div style="font-size: 32px; font-weight: 800; text-align: center; letter-spacing: 5px; color: #6366f1; background: rgba(99, 102, 241, 0.1); padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <div style="font-size: 28px; font-weight: bold; text-align: center; letter-spacing: 4px; color: #4f46e5; background-color: #f1f5f9; padding: 12px; border-radius: 6px; margin: 20px 0;">
                 {details.get('otp')}
             </div>
-            <p>This code is valid for 10 minutes. If you did not request this, you can safely ignore this email.</p>
+            <p style="font-size: 13px; color: #64748b;">This code is valid for 10 minutes. If you did not request this, you can safely ignore this email.</p>
         </div>
         """
     elif template_type == "mcq_result":
