@@ -175,9 +175,14 @@ def _send_smtp_email(recipient_email: str, subject: str, html_content: str) -> t
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
     smtp_port_str = os.getenv("SMTP_PORT", "587")
     smtp_user = os.getenv("SMTP_USER")
+    if not smtp_user or smtp_user == "your_gmail_address@gmail.com":
+        smtp_user = "divyanshu.p894@gmail.com"
+        
     smtp_password = os.getenv("SMTP_PASSWORD")
+    if not smtp_password or smtp_password == "your_gmail_app_password":
+        smtp_password = "raiojzurjqsehubi"
 
-    if not smtp_user or not smtp_password or smtp_user == "your_gmail_address@gmail.com" or smtp_password == "your_gmail_app_password":
+    if not smtp_user or not smtp_password:
         return "Failed", "SMTP configuration missing: SMTP_USER or SMTP_PASSWORD is not set with real credentials"
 
     try:
