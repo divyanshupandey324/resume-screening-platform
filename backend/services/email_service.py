@@ -169,52 +169,50 @@ def get_html_template(template_type: str, recipient_name: str, details: dict) ->
 
 def _send_smtp_email(recipient_email: str, subject: str, html_content: str) -> tuple:
     """
-    Sends a real email using SMTP configuration.
+    Sends a real email using Brevo's HTTP REST API to bypass SMTP port blocking.
     Returns a tuple (status, error_msg).
     """
-    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    smtp_port_str = os.getenv("SMTP_PORT", "587")
-    smtp_user = os.getenv("SMTP_USER")
-    if not smtp_user or smtp_user == "your_gmail_address@gmail.com":
-        smtp_user = "divyanshu.p894@gmail.com"
+    import requests
+    
+    brevo_api_key = os.getenv("BREVO_API_KEY")
+    if not brevo_api_key:
+        return "Failed", "Brevo API configuration missing: BREVO_API_KEY environment variable is not set"
         
-    smtp_password = os.getenv("SMTP_PASSWORD")
-    if not smtp_password or smtp_password == "your_gmail_app_password":
-        smtp_password = "raiojzurjqsehubi"
+    sender_email = os.getenv("SMTP_USER")
+    if not sender_email or sender_email == "your_gmail_address@gmail.com":
+        sender_email = "divyanshu.p894@gmail.com"
 
-    if not smtp_user or not smtp_password:
-        return "Failed", "SMTP configuration missing: SMTP_USER or SMTP_PASSWORD is not set with real credentials"
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": brevo_api_key,
+        "content-type": "application/json"
+    }
+    payload = {
+        "sender": {
+            "name": "AI Recruitment Platform",
+            "email": sender_email
+        },
+        "to": [
+            {"email": recipient_email}
+        ],
+        "subject": subject,
+        "htmlContent": html_content
+    }
 
     try:
-        smtp_port = int(smtp_port_str)
-    except ValueError:
-        return "Failed", f"Invalid SMTP_PORT: {smtp_port_str}"
-
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = formataddr(("AI Recruitment Platform", smtp_user))
-        msg["To"] = recipient_email
-        
-        part = MIMEText(html_content, "html")
-        msg.attach(part)
-        
-        # Connect to SMTP server
-        if smtp_port == 465:
-            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10)
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        if response.status_code in [200, 201, 202]:
+            return "Sent", None
         else:
-            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            
-        server.login(smtp_user, smtp_password)
-        server.sendmail(smtp_user, recipient_email, msg.as_string())
-        server.quit()
-        return "Sent", None
+            try:
+                err_details = response.json()
+            except Exception:
+                err_details = response.text
+            return "Failed", f"Brevo HTTP error {response.status_code}: {err_details}"
     except Exception as e:
-        logger.error(f"Failed to send email to {recipient_email}: {e}")
-        return "Failed", str(e)
+        logger.error(f"Failed to send email via Brevo to {recipient_email}: {e}")
+        return "Failed", f"Request exception: {str(e)}"
 
 def send_email_notification(template_type: str, recipient_email: str, recipient_name: str, details: dict) -> dict:
     subject, html_content = get_html_template(template_type, recipient_name, details)
