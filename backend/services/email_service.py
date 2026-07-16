@@ -169,52 +169,29 @@ def get_html_template(template_type: str, recipient_name: str, details: dict) ->
 
 def _send_smtp_email(recipient_email: str, subject: str, html_content: str) -> tuple:
     """
-    Sends a real email using Brevo's HTTP REST API to bypass SMTP port blocking.
+    Sends a real email using a Google Apps Script Web App to bypass SMTP port blocking and ensure instant delivery.
     Returns a tuple (status, error_msg).
     """
     import requests
     
-    brevo_api_key = os.getenv("BREVO_API_KEY")
-    if not brevo_api_key:
-        # Split string concatenation to bypass static GitHub push protection scanning
-        p1 = "xkeysib-9ab4d1dfd6f5842b71281ffbca8ab039"
-        p2 = "bc9fae2e34a2a398c22993014e051183-iumdzqAAW76oZdOi"
-        brevo_api_key = p1 + p2
-        
-    sender_email = os.getenv("SMTP_USER")
-    if not sender_email or sender_email == "your_gmail_address@gmail.com":
-        sender_email = "divyanshu.p894@gmail.com"
+    apps_script_url = os.getenv("APPS_SCRIPT_URL")
+    if not apps_script_url:
+        apps_script_url = "https://script.google.com/macros/s/AKfycbx2_3uOV-D46NYTu4_L6DkYxXRjjN2kDr-vpy_yT-qHnPRNT9gkq80TYDPaZYKj-vro/exec"
 
-    url = "https://api.brevo.com/v3/smtp/email"
-    headers = {
-        "accept": "application/json",
-        "api-key": brevo_api_key,
-        "content-type": "application/json"
-    }
     payload = {
-        "sender": {
-            "name": "AI Recruitment Platform",
-            "email": sender_email
-        },
-        "to": [
-            {"email": recipient_email}
-        ],
+        "to": recipient_email,
         "subject": subject,
-        "htmlContent": html_content
+        "html": html_content
     }
 
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
-        if response.status_code in [200, 201, 202]:
+        response = requests.post(apps_script_url, json=payload, timeout=10)
+        if response.status_code == 200:
             return "Sent", None
         else:
-            try:
-                err_details = response.json()
-            except Exception:
-                err_details = response.text
-            return "Failed", f"Brevo HTTP error {response.status_code}: {err_details}"
+            return "Failed", f"Apps Script HTTP error {response.status_code}: {response.text}"
     except Exception as e:
-        logger.error(f"Failed to send email via Brevo to {recipient_email}: {e}")
+        logger.error(f"Failed to send email via Apps Script to {recipient_email}: {e}")
         return "Failed", f"Request exception: {str(e)}"
 
 def send_email_notification(template_type: str, recipient_email: str, recipient_name: str, details: dict) -> dict:
